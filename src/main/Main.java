@@ -31,7 +31,7 @@ public class Main {
 //    final String PREFIX_MESSAGE = "MESSAGE:"; TODO
     final String PREFIX_CONNECT = "CONNECT:";
 //    final String PREFIX_CLOSE = "CLOSE:"; TODO
-    int port = 3332;
+    int port = 9332;
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
@@ -111,47 +111,26 @@ public class Main {
         new Thread(() -> {
             Socket host = null;
             try {
-                // rechecking if Server Thread has already connected
-                if (clients.containsKey(key)) {
-                    return;
-                }
-
                 host = new Socket();
-                host.connect(new InetSocketAddress(ip, peerServerPort), 3000); // 3s timeout
+                host.connect(new InetSocketAddress(ip, peerServerPort));
 
                 String requestKey = PREFIX_CONNECT + this.Username + ":" + getLocalIp() + ":" + this.port;
                 PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
                 writer.println(requestKey);
+
                 if (debug) {
                     System.out.println("Connection request sent to: (sendConnectionRequest) " + ip);
                 }
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
-                String acceptMessage = reader.readLine();
-                if ("Accepted".equals(acceptMessage)) {
-                    // atomically add only if absent
-                    Socket existing = clients.putIfAbsent(key, host);
-                    if (existing != null) { // if another thready has already connected then don't make dublicate 
-                        try {
-                            host.close();
-                        } catch (IOException ignore) {
-                        }
-                        if (debug) {
-                            System.out.println("Connection attempt lost race, closed extra socket for " + key);
-                        }
-                    } else { // Add and remove from trying to connect list
-                        lastConnectAttempt.remove(key);
-                        if (debug) {
-                            System.out.println("Addded key (sendConnectionRequest): " + key);
-                        }
-                        // listen to message from the thread
-                        new Thread(new get_message(host, username)).start();
+                if (host.isConnected()) {
+                    lastConnectAttempt.remove(key);
+                    clients.put(key, host);
+                    if (debug) {
+                        System.out.println("Addded key (sendConnectionRequest): " + key);
                     }
-                } else { // not accepted
-                    try {
-                        host.close();
-                    } catch (IOException ignore) {
-                    }
+                    // listen to message from the thread
+                    new Thread(new get_message(host, username)).start();
+
                 }
             } catch (IOException ex) {
                 if (host != null) {
@@ -163,11 +142,11 @@ public class Main {
                 System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             }
         }).start();
-
     }
 
     /**
-     * handles clients incomming messages and sends connection requests to clients
+     * handles clients incomming messages and sends connection requests to
+     * clients
      */
     private class get_message implements Runnable {
 
@@ -188,9 +167,6 @@ public class Main {
             try {
                 reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
                 writer = new PrintWriter(socket.getOutputStream(), true);
-
-                // notifying the client that connection request was accepted
-                writer.println("Accepted");
             } catch (IOException e) {
                 System.err.println("Handler setup error: " + e.getMessage());
                 cleanup();
@@ -204,11 +180,11 @@ public class Main {
         public void run() {
             try {
                 String message;
-                if(reader.readLine()=="Accepted"){} // flush
-                
                 while ((message = reader.readLine()) != null) {
-                   System.out.println(username + ": " + message);
-                   if (EXIT) break;
+                    System.out.println(username + ": " + message);
+                    if (EXIT) {
+                        break;
+                    }
                 }
                 // readLine returned null -> peer closed connection
             } catch (IOException ex) {
@@ -225,9 +201,11 @@ public class Main {
                 }
             } catch (IOException ignored) {
             }
+
             if (writer != null) {
-                writer.close(); // now safe to close on cleanup
+                writer.close();
             }
+
             try {
                 if (socket != null && !socket.isClosed()) {
                     socket.close();
@@ -237,7 +215,9 @@ public class Main {
 
             // remove this socket from clients list map thingie
             clients.entrySet().removeIf(e -> e.getValue() == this.socket);
-            if (debug) System.out.println("Connection closed for: " + username);
+            if (!debug) {
+                System.out.println("Connection closed for: " + username);
+            }
         }
 
     }
@@ -254,9 +234,11 @@ public class Main {
         } catch (SocketException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
+
         if (nets == null) {
             return "127.0.0.1";
         }
+
         for (NetworkInterface netint : java.util.Collections.list(nets)) {
 
             try {
@@ -283,7 +265,7 @@ public class Main {
     public void server() throws IOException {
 
         ServerSocket ser = new ServerSocket(port);
-        if(true){ // needed while making
+        if (true) { // needed while making
             System.out.println("your ip is: " + getLocalIp());
             System.out.println("your username: " + this.Username);
             System.out.println("your port: " + this.port);
@@ -335,9 +317,11 @@ public class Main {
                         incoming.close();
                     }
                 } catch (IOException e) {
-                    System.out.println("Error accepting client: " + e.getMessage());
+                    System.err.println("Error accepting client: " + e.getMessage());
                 }
-                if(EXIT) break;
+                if (EXIT) {
+                    break;
+                }
             }
         }).start();
 
@@ -369,12 +353,15 @@ public class Main {
                 } catch (IOException e) {
                     System.out.println("Error sending UDP broadcast: " + e.getMessage());
                 }
+                
                 try {
                     Thread.sleep(5000); // Sleep 5 second between broadcasts
                 } catch (InterruptedException e) {
                     System.out.println("Broadcast thread interrupted");
                 }
-                if(EXIT) break;
+                if (EXIT) {
+                    break;
+                }
             }
         }).start();
 
@@ -402,7 +389,7 @@ public class Main {
                         }
                         // only attempt if not already connected
                         if (!clients.containsKey(key)) {
-                            if (debug) {
+                            if (!debug) {
                                 System.out.println("Discovered peer: " + username + " at " + ip + ":" + peerPort);
                             }
                             sendConnectionRequest(username, ip, peerPort);
@@ -412,10 +399,12 @@ public class Main {
                             }
                         }
                     }
-                    if(EXIT) break;
+                    if (EXIT) {
+                        break;
+                    }
                 }
             } catch (IOException e) {
-                System.out.println("Error receiving UDP packets: " + e.getMessage());
+                System.err.println("Error receiving UDP packets: " + e.getMessage());
             }
         }).start();
     }
@@ -442,8 +431,8 @@ public class Main {
         Scanner scan = new Scanner(System.in);
 
         messenger.start();
+        System.out.println("Enter your message: ");
         while (true) {
-            System.out.print("Enter your message: ");
             String user_message = scan.nextLine();
             String[] parsed_message = user_message.split(" ");
 
@@ -461,7 +450,7 @@ public class Main {
                     }
                     case "/exit": {
                         EXIT = true;
-                        // TODO: closing all the socket before exiting
+                        // TODO: closing all the socket properly before exiting
                         System.exit(0);
                     }
                 }
