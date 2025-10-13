@@ -2,3 +2,4 @@ transfer.sh
 test.java
 test/**
 private/**
+build

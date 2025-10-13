@@ -1,11 +1,14 @@
 package crypto;
 
+import database.UserInfo;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -26,14 +29,16 @@ import java.util.logging.Logger;
  * @author theunknown
  */
 public class CryptoRSA {
+
     private static final String ALGORITHM = "RSA";
     private static final int DEFAULT_KEY_SIZE = 2048;
-    
+
     /**
      * Generate RSA key pair
-     * @return 
+     *
+     * @return
      */
-public KeyPair generateKeyPair() {
+    public KeyPair generateKeyPair() {
         try {
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(ALGORITHM);
             keyPairGenerator.initialize(DEFAULT_KEY_SIZE, new SecureRandom());
@@ -45,27 +50,49 @@ public KeyPair generateKeyPair() {
     }
     
     /**
+     * saves public key into the database and saves private key into a file
+     * @param user
+     * @param username
+     * @throws IOException 
+     */
+    public void saveNewKeys(UserInfo user, String username) throws IOException {
+        KeyPair key = generateKeyPair();
+
+        String filePath = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
+        
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+        writer.write(privateKeyToString(key.getPrivate()));
+        writer.close();
+
+        user.setPublicKey(key.getPublic().getEncoded());
+
+    }
+
+    /**
      * Convert PublicKey to Base64 string
+     *
      * @param publicKey
-     * @return 
+     * @return
      */
     public String publicKeyToString(PublicKey publicKey) {
         return Base64.getEncoder().encodeToString(publicKey.getEncoded());
     }
-    
+
     /**
      * Convert PrivateKey to Base64 string
+     *
      * @param privateKey
-     * @return 
+     * @return
      */
     public static String privateKeyToString(PrivateKey privateKey) {
         return Base64.getEncoder().encodeToString(privateKey.getEncoded());
     }
-    
+
     /**
      * Convert Base64 string back to PublicKey
+     *
      * @param publicKeyString
-     * @return 
+     * @return
      */
     public static PublicKey getPublicKeyFromString(String publicKeyString) {
         try {
@@ -82,13 +109,14 @@ public KeyPair generateKeyPair() {
         }
         return null;
     }
-    
+
     /**
      * Convert Base64 string back to PrivateKey
+     *
      * @param privateKeyString
      * @return
      */
-    public PrivateKey getPrivateKeyFromString(String privateKeyString){
+    public PrivateKey getPrivateKeyFromString(String privateKeyString) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(privateKeyString);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
@@ -101,12 +129,13 @@ public KeyPair generateKeyPair() {
         }
         return null;
     }
-    
+
     /**
      * saves publicKey in location
+     *
      * @param location
      * @param publicKey
-     * @return 
+     * @return
      */
     public boolean savePublicKey(String location, PublicKey publicKey) {
         byte[] data = publicKeyToString(publicKey).getBytes();
@@ -120,12 +149,13 @@ public KeyPair generateKeyPair() {
             return false;
         }
     }
-    
+
     /**
      * saves privateKey in location
+     *
      * @param location
      * @param privateKey
-     * @return 
+     * @return
      */
     public boolean savePrivateKey(String location, PrivateKey privateKey) {
         byte[] data = privateKeyToString(privateKey).getBytes();
@@ -143,16 +173,16 @@ public KeyPair generateKeyPair() {
 
     /**
      * loads publickey from location
+     *
      * @param location
-     * @return 
+     * @return
      */
     public PublicKey loadPublicKeyFromFile(String location) {
         File inFile = new File(location);
         if (!inFile.exists()) {
             return null;
         }
-        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile));
-             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int read;
             while ((read = bin.read(buffer)) != -1) {
@@ -168,16 +198,16 @@ public KeyPair generateKeyPair() {
 
     /**
      * loads privateKey from location
+     *
      * @param location
-     * @return 
+     * @return
      */
     public PrivateKey loadPrivateKeyFromFile(String location) {
         File inFile = new File(location);
         if (!inFile.exists()) {
             return null;
         }
-        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile));
-             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int read;
             while ((read = bin.read(buffer)) != -1) {

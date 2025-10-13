@@ -4,6 +4,9 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import database.*;
+import crypto.*;
+import java.security.PublicKey;
 
 /**
  *
@@ -12,6 +15,10 @@ import java.util.concurrent.*;
 public class Main {
 
     Boolean debug = false;
+    
+    final String PREFIX_CONNECT = "CONNECT:";
+    
+    protected static Boolean EXIT = false;
 
     // String Key = peerUser + ":" + peerIp +":"+ peerPort;
     protected static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<>();
@@ -19,68 +26,64 @@ public class Main {
     // list of clients who couldn't connect. We wait for them
     protected static ConcurrentHashMap<String, Long> lastConnectAttempt = new ConcurrentHashMap<>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
+    
+    private UserInfo user = null;
 
-    protected static Boolean EXIT = false;
-    String Broadcast_id;
-    int udp_port;
-    String Username;
-    String Username_file;
-
-    final String FUSERNAME = "/.messagingAppUsername";
-
-//    final String PREFIX_MESSAGE = "MESSAGE:"; TODO
-    final String PREFIX_CONNECT = "CONNECT:";
-//    final String PREFIX_CLOSE = "CLOSE:"; TODO
-    int port = 9332;
+    private String Broadcast_id;
+    private int udp_port;
+    
+    private final int port = 9332;
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
         this.udp_port = udp_port;
-        this.Username_file = System.getProperty("user.home") + FUSERNAME;
     }
 
     public void start() {
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(this.Username_file));
-            this.Username = reader.readLine();
-        } catch (FileNotFoundException e) {
-            Scanner scan = new Scanner(System.in);
-            System.out.println("Enter your username: ");
-            String username = scan.nextLine();
-
-            FileWriter writer = null;
-            try {
-                writer = new FileWriter(this.Username_file);
-                writer.write(username);
-                this.Username = username;
-            } catch (IOException f) {
-                System.out.println("An error occurred while writing to the file.");
-                e.printStackTrace();
-            } finally {
-                try {
-                    if (reader != null) {
-                        reader.close();
-                    }
-                    if (writer != null) {
-                        writer.close();
-                    }
-                } catch (IOException f) {
-                    System.out.println("An error occurred while closing the file.");
-                    f.printStackTrace();
-                }
-            }
-
-        } catch (IOException e) {
-            System.out.println("Can't read from the file");
-            e.printStackTrace();
-        }
-
+        
+        while(getCurrentUser());
         try {
             server();
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
+    }
+    
+    /**
+     * returns false if sucessfully user created or password verified.
+     * @return 
+     */
+    private boolean getCurrentUser(){
+        GetConnectionDB conn = new GetConnectionDB("localhost", "3306", "messagedb", "user", "1234", this.debug);
+        conn.getConnection();
+        Query query = new Query(conn.conn,this.debug);
+        
+        Scanner scan = new Scanner(System.in);
+        System.out.println("Enter your username: ");
+        
+        String username = scan.nextLine();
+        
+        user = query.getUser(username);
+        
+        if (user == null){
+            System.out.println("New user detected: ");
+            System.out.println("Input your new password and don't forget it: ");
+            
+            String password = scan.nextLine();
+            
+            user = query.createUser(username, password);
+            
+            if(query.saveNewUser(user)){
+                System.exit(1);
+            }
+            return false;
+        }
+        
+        System.out.println("Input your password: ");
+        String password = scan.nextLine();
+        
+        boolean verification = new CryptoPassword(this.debug).verifyPassword(user, password);
+        return verification;
     }
 
     /**
@@ -91,22 +94,9 @@ public class Main {
      */
     private void sendConnectionRequest(String username, String ip, int peerServerPort) { // client side socket
         final String key = username + ":" + ip + ":" + peerServerPort;
-        final long now = System.currentTimeMillis();
-        Long last = lastConnectAttempt.get(key);
-
-        if (clients.containsKey(key)) {
-            if (debug) {
-                System.out.println("Already connected to " + key);
-            }
+        if(falseConnection(key)){
             return;
         }
-        if (last != null && now - last < CONNECT_COOLDOWN_MS) {
-            if (debug) {
-                System.out.println("Skipping recent attempt to " + key);
-            }
-            return;
-        }
-        lastConnectAttempt.put(key, now);
 
         new Thread(() -> {
             Socket host = null;
@@ -114,7 +104,7 @@ public class Main {
                 host = new Socket();
                 host.connect(new InetSocketAddress(ip, peerServerPort));
 
-                String requestKey = PREFIX_CONNECT + this.Username + ":" + getLocalIp() + ":" + this.port;
+                String requestKey = PREFIX_CONNECT + user.username + ":" + getLocalIp() + ":" + this.port;
                 PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
                 writer.println(requestKey);
 
@@ -132,7 +122,11 @@ public class Main {
                     new Thread(new get_message(host, username)).start();
 
                 }
-            } catch (IOException ex) {
+            } catch(NoRouteToHostException e){
+                if(debug){
+                    System.err.println("no route to host error caught");
+                }
+            }catch (IOException ex) {
                 if (host != null) {
                     try {
                         host.close();
@@ -142,6 +136,32 @@ public class Main {
                 System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             }
         }).start();
+    }
+    
+    /**
+     * returns true if there is a false connection.
+     * true if we are already connected or if it's in cooldown list
+     * @param key
+     * @return 
+     */
+    private boolean falseConnection(String key){
+        final long now = System.currentTimeMillis();
+        Long last = lastConnectAttempt.get(key);
+
+        if (clients.containsKey(key)) {
+            if (debug) {
+                System.out.println("Already connected to " + key);
+            }
+            return true;
+        }
+        if (last != null && now - last < CONNECT_COOLDOWN_MS) {
+            if (debug) {
+                System.out.println("Skipping recent attempt to " + key);
+            }
+            return true;
+        }
+        lastConnectAttempt.put(key, now);
+        return false;
     }
 
     /**
@@ -179,6 +199,7 @@ public class Main {
         @Override
         public void run() {
             try {
+                // TODO handel through EncryptedMessage
                 String message;
                 while ((message = reader.readLine()) != null) {
                     System.out.println(username + ": " + message);
@@ -186,7 +207,6 @@ public class Main {
                         break;
                     }
                 }
-                // readLine returned null -> peer closed connection
             } catch (IOException ex) {
                 System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             } finally {
@@ -267,7 +287,7 @@ public class Main {
         ServerSocket ser = new ServerSocket(port);
         if (true) { // needed while making
             System.out.println("your ip is: " + getLocalIp());
-            System.out.println("your username: " + this.Username);
+            System.out.println("your username: " + user.username);
             System.out.println("your port: " + this.port);
         }
 
@@ -291,7 +311,7 @@ public class Main {
                         String Key = peerUser + ":" + peerIp + ":" + peerPort;
 
                         // reject ourself
-                        if (peerUser.equals(this.Username) && peerIp.equals(this.getLocalIp())) {
+                        if (peerUser.equals(user.username) && peerIp.equals(this.getLocalIp())) {
                             incoming.close();
                             continue;
                         }
@@ -327,12 +347,14 @@ public class Main {
 
         // UDP broadcasting presence
         new Thread(() -> {
-            String message = PREFIX_CONNECT + Username + ":" + getLocalIp() + ":" + this.port;
+            String message = PREFIX_CONNECT + user.username+ ":" + getLocalIp() + ":" + this.port;
             if (debug) {
                 System.out.println("broadcasting this message in bytes: " + message);
             }
+            
             byte[] messageByte = message.getBytes();
             DatagramSocket dSocket = null;
+            
             try {
                 dSocket = new DatagramSocket();
                 dSocket.setBroadcast(true);
@@ -342,6 +364,7 @@ public class Main {
             }
 
             while (true) {
+                // TODO use multicast instead of Broadcasting everywhere
                 try {
                     DatagramPacket packet = new DatagramPacket(
                             messageByte,
@@ -384,7 +407,7 @@ public class Main {
                         String key = username + ":" + ip + ":" + peerPort;
 
                         // ignore our own broadcast
-                        if (username.equals(this.Username) && ip.equals(this.getLocalIp())) {
+                        if (username.equals(user.username) && ip.equals(this.getLocalIp())) {
                             continue;
                         }
                         // only attempt if not already connected

@@ -36,10 +36,13 @@ public class GetConnectionDB {
         
         this.debug = debug;
     }
-
+    /**
+     * returns connection to given database information and setus up database if not found. 
+     * @return 
+     */
     public Connection getConnection(){
         // Connect to MySQL server
-        String serverUrl = "jdbc:mysql://" + dbhost + ":" + dbport + "/?useSSL=false&serverTimezone=UTC";
+        String serverUrl = "jdbc:mariadb://" + dbhost + ":" + dbport + "/?useSSL=false&serverTimezone=UTC";
         try {
             this.conn = DriverManager.getConnection(serverUrl, dbuser, dbpassword);
         } catch (SQLException e) {
@@ -56,7 +59,7 @@ public class GetConnectionDB {
         }
 
         // Connect to the database
-        String urlToDb = "jdbc:mysql://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&serverTimezone=UTC";
+        String urlToDb = "jdbc:mariadb://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&serverTimezone=UTC";
         try {
             conn = DriverManager.getConnection(urlToDb, dbuser, dbpassword);
         } catch (SQLException e) {
@@ -79,9 +82,9 @@ public class GetConnectionDB {
         String sql = "CREATE TABLE IF NOT EXISTS users ("
                 + "uid BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "username TEXT NOT NULL UNIQUE,"
-                + "password_hashed VARBINARY(64) NOT NULL UNIQUE,"
-                + "salt VARBINARY(16) NOT NULL,"
-                + "public_key VARBINARY(512),"
+                + "password_hashed VARBINARY(75) NOT NULL UNIQUE,"
+                + "salt VARBINARY(20) NOT NULL,"
+                + "public_key VARBINARY(600),"
                 + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";
         try (Statement stmt = conn.createStatement()) {
@@ -95,8 +98,8 @@ public class GetConnectionDB {
         String sql = "CREATE TABLE IF NOT EXISTS senders ("
                 + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "username TEXT NOT NULL,"
-                + "public_key VARBINARY(512) NOT NULL,"
-                + "encrypted_aes_key VARBINARY(512),"
+                + "public_key VARBINARY(600) NOT NULL,"
+                + "encrypted_aes_key VARBINARY(600),"
                 + "encounter_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";
         try (Statement stmt = conn.createStatement()) {
@@ -129,7 +132,7 @@ public class GetConnectionDB {
                 + "uid BIGINT NOT NULL,"
                 + "sid BIGINT NOT NULL,"
                 + "ciphertext BLOB NOT NULL,"
-                + "iv VARBINARY(16) NOT NULL,"
+                + "iv VARBINARY(20) NOT NULL,"
                 + "read_state BOOLEAN DEFAULT FALSE,"
                 + "sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
                 + "FOREIGN KEY(uid, sid) REFERENCES communication_participants(uid, sid) ON DELETE CASCADE"

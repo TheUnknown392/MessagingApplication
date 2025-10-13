@@ -45,25 +45,6 @@ public class CryptoMessage {
         this.debug = debug;
     }
 
-    public class EncryptedMessage {
-
-        private byte[] cypherText;
-        private byte[] iv;
-
-        public EncryptedMessage(byte[] cypherText, byte[] iv) {
-            this.cypherText = cypherText;
-            this.iv = iv;
-        }
-
-        public byte[] getCypherText() {
-            return this.cypherText;
-        }
-
-        public byte[] getIV() {
-            return this.iv;
-        }
-    }
-
     /**
      * generates Salt
      * @return 
@@ -153,6 +134,15 @@ public class CryptoMessage {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
+    }
+    
+    /**
+     * gets AES SecretKey from aesByte
+     * @param location
+     * @return 
+     */
+    public SecretKey readAESkey(byte[] aesByte){
+        return new SecretKeySpec(aesByte,"AES");
     }
 
     /**
