@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import database.*;
 import crypto.*;
-import java.security.PublicKey;
 
 /**
  *
@@ -15,23 +14,23 @@ import java.security.PublicKey;
 public class Main {
 
     Boolean debug = false;
-    
+
     final String PREFIX_CONNECT = "CONNECT:";
-    
+
     protected static Boolean EXIT = false;
 
     // String Key = peerUser + ":" + peerIp +":"+ peerPort;
-    protected static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<>();
+    protected static ConcurrentHashMap<ConnectionKey, Socket> clients = new ConcurrentHashMap<>();
 
     // list of clients who couldn't connect. We wait for them
-    protected static ConcurrentHashMap<String, Long> lastConnectAttempt = new ConcurrentHashMap<>();
+    protected static ConcurrentHashMap<ConnectionKey, Long> lastConnectAttempt = new ConcurrentHashMap<>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
-    
+
     private UserInfo user = null;
 
     private String Broadcast_id;
     private int udp_port;
-    
+
     private final int port = 9332;
 
     public Main(String BroadcastID, int udp_port) {
@@ -40,93 +39,108 @@ public class Main {
     }
 
     public void start() {
-        
-        while(getCurrentUser());
+
+        while (getCurrentUser());
         try {
             server();
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
     }
-    
+
     /**
      * returns false if sucessfully user created or password verified.
-     * @return 
+     *
+     * @return
      */
-    private boolean getCurrentUser(){
+    private boolean getCurrentUser() {
         GetConnectionDB conn = new GetConnectionDB("localhost", "3306", "messagedb", "user", "1234", this.debug);
         conn.getConnection();
-        Query query = new Query(conn.conn,this.debug);
-        
+        Query query = new Query(conn.conn, this.debug);
+
         Scanner scan = new Scanner(System.in);
         System.out.println("Enter your username: ");
-        
+
         String username = scan.nextLine();
-        
+
         user = query.getUser(username);
-        
-        if (user == null){
+
+        if (user == null) {
             System.out.println("New user detected: ");
             System.out.println("Input your new password and don't forget it: ");
-            
+
             String password = scan.nextLine();
-            
+
             user = query.createUser(username, password);
-            
-            if(query.saveNewUser(user)){
+
+            if (query.saveNewUser(user)) {
                 System.exit(1);
             }
             return false;
         }
-        
+
         System.out.println("Input your password: ");
         String password = scan.nextLine();
-        
+
         boolean verification = new CryptoPassword(this.debug).verifyPassword(user, password);
         return verification;
     }
 
     /**
-     * sending requests to peers we found from broadcast
+     * receives Key and accepts the connection if not exist
      *
-     * @param ip
-     * @param peerServerPort
+     * @param received
      */
-    private void sendConnectionRequest(String username, String ip, int peerServerPort) { // client side socket
-        final String key = username + ":" + ip + ":" + peerServerPort;
-        if(falseConnection(key)){
+    private void sendConnectionRequest(String received) { // client side socket
+        ConnectionKey connectionKey = new ConnectionKey(received, PREFIX_CONNECT);
+        if (connectionKey.ip == null) {
             return;
         }
+        int peerServerPort = Integer.parseInt(connectionKey.port);
+        // ignore our own broadcast
+        if (connectionKey.username.equals(user.username) && connectionKey.ip.equals(getLocalIp())) {
+            return;
+        }
+        // only attempt if not already connected
+        if (clients.containsKey(connectionKey)) {
+            return;
+        }
+
+        if (falseConnection(connectionKey)) {
+            return;
+        }
+        System.out.println(connectionKey);
 
         new Thread(() -> {
             Socket host = null;
             try {
                 host = new Socket();
-                host.connect(new InetSocketAddress(ip, peerServerPort));
+                host.connect(new InetSocketAddress(connectionKey.ip, peerServerPort));
 
                 String requestKey = PREFIX_CONNECT + user.username + ":" + getLocalIp() + ":" + this.port;
+                
                 PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
                 writer.println(requestKey);
 
                 if (debug) {
-                    System.out.println("Connection request sent to: (sendConnectionRequest) " + ip);
+                    System.out.println("Connection request sent to: (sendConnectionRequest) " + connectionKey.ip);
                 }
 
                 if (host.isConnected()) {
-                    lastConnectAttempt.remove(key);
-                    clients.put(key, host);
+                    lastConnectAttempt.remove(connectionKey);
+                    clients.put(connectionKey, host);
                     if (debug) {
-                        System.out.println("Addded key (sendConnectionRequest): " + key);
+                        System.out.println("Addded key (sendConnectionRequest): " + connectionKey);
                     }
                     // listen to message from the thread
-                    new Thread(new get_message(host, username)).start();
+                    new Thread(new get_message(host, connectionKey.username)).start();
 
                 }
-            } catch(NoRouteToHostException e){
-                if(debug){
+            } catch (NoRouteToHostException e) {
+                if (debug) {
                     System.err.println("no route to host error caught");
                 }
-            }catch (IOException ex) {
+            } catch (IOException ex) {
                 if (host != null) {
                     try {
                         host.close();
@@ -137,30 +151,31 @@ public class Main {
             }
         }).start();
     }
-    
-    /**
-     * returns true if there is a false connection.
-     * true if we are already connected or if it's in cooldown list
-     * @param key
-     * @return 
-     */
-    private boolean falseConnection(String key){
-        final long now = System.currentTimeMillis();
-        Long last = lastConnectAttempt.get(key);
 
-        if (clients.containsKey(key)) {
+    /**
+     * returns true if there is a false connection. true if we are already
+     * connected or if it's in cooldown list
+     *
+     * @param key
+     * @return
+     */
+    private boolean falseConnection(ConnectionKey connectionKey) {
+        final long now = System.currentTimeMillis();
+        Long last = lastConnectAttempt.get(connectionKey);
+
+        if (clients.containsKey(connectionKey)) {
             if (debug) {
-                System.out.println("Already connected to " + key);
+                System.out.println("Already connected to " + connectionKey);
             }
             return true;
         }
         if (last != null && now - last < CONNECT_COOLDOWN_MS) {
             if (debug) {
-                System.out.println("Skipping recent attempt to " + key);
+                System.out.println("Skipping recent attempt to " + connectionKey);
             }
             return true;
         }
-        lastConnectAttempt.put(key, now);
+        lastConnectAttempt.put(connectionKey, now);
         return false;
     }
 
@@ -301,41 +316,39 @@ public class Main {
 
 //                    incoming.setSoTimeout(5000);
                     String peerIdentity = in.readLine(); // PREFIX_CONNECT:username:ip:port
-
-                    if (peerIdentity != null && peerIdentity.startsWith(PREFIX_CONNECT)) {
-                        String[] parts = peerIdentity.substring(PREFIX_CONNECT.length()).split(":");
-                        String peerUser = parts[0];
-                        String peerIp = parts[1];
-                        String peerPort = parts[2];
-
-                        String Key = peerUser + ":" + peerIp + ":" + peerPort;
-
-                        // reject ourself
-                        if (peerUser.equals(user.username) && peerIp.equals(this.getLocalIp())) {
-                            incoming.close();
-                            continue;
-                        }
-
-                        // if already connected, close duplicate incoming connection
-                        if (clients.containsKey(Key)) {
-                            if (debug) {
-                                System.out.println("Duplicate incoming connection for " + Key + ", closing");
-                            }
-                            incoming.close();
-                            continue;
-                        }
-
-                        // otherwise register and start handler
-                        clients.put(Key, incoming);
-                        if (debug) {
-                            System.out.println("Accepted Request: (serverThread)" + getLocalIp());
-                            System.out.println("Added Key (ServerThread): " + Key);
-                        }
-                        new Thread(new get_message(incoming, peerUser)).start();
-
-                    } else {
+                    ConnectionKey connectionKey = new ConnectionKey(peerIdentity, PREFIX_CONNECT);
+                    // if connection was invalid empty
+                    if (connectionKey.ip == null) {
                         incoming.close();
+                        continue;
                     }
+                    // if connection were us
+                    if (connectionKey.username.equals(user.username) && connectionKey.ip.equals(this.getLocalIp())) {
+                        incoming.close();
+                        continue;
+                    }
+                    
+
+                    // if already connected, close duplicate incoming connection
+                    if (clients.containsKey(connectionKey)) {
+                        if (debug) {
+                            System.out.println("Duplicate incoming connection for " + connectionKey + ", closing");
+                        }
+                        incoming.close();
+                        continue;
+                    }
+                    
+                    if (debug) {
+                        System.out.println("key server: " + connectionKey);
+                    }
+
+                    // otherwise register and start handler
+                    clients.put(connectionKey, incoming);
+                    if (debug) {
+                        System.out.println("Accepted Request: (serverThread)" + getLocalIp());
+                        System.out.println("Added Key (ServerThread): " + connectionKey);
+                    }
+                    new Thread(new get_message(incoming, connectionKey.username)).start();
                 } catch (IOException e) {
                     System.err.println("Error accepting client: " + e.getMessage());
                 }
@@ -347,14 +360,15 @@ public class Main {
 
         // UDP broadcasting presence
         new Thread(() -> {
-            String message = PREFIX_CONNECT + user.username+ ":" + getLocalIp() + ":" + this.port;
+            String message = PREFIX_CONNECT + user.username + ":" + getLocalIp() + ":" + this.port;
+
             if (debug) {
                 System.out.println("broadcasting this message in bytes: " + message);
             }
-            
+
             byte[] messageByte = message.getBytes();
             DatagramSocket dSocket = null;
-            
+
             try {
                 dSocket = new DatagramSocket();
                 dSocket.setBroadcast(true);
@@ -376,7 +390,7 @@ public class Main {
                 } catch (IOException e) {
                     System.out.println("Error sending UDP broadcast: " + e.getMessage());
                 }
-                
+
                 try {
                     Thread.sleep(5000); // Sleep 5 second between broadcasts
                 } catch (InterruptedException e) {
@@ -398,30 +412,7 @@ public class Main {
                     socket.receive(packet);
 
                     String received = new String(packet.getData(), 0, packet.getLength());
-                    if (received != null && received.startsWith(PREFIX_CONNECT)) {
-                        String[] parts = received.substring(PREFIX_CONNECT.length()).split(":");
-                        String username = parts[0];
-                        String ip = parts[1];
-                        int peerPort = Integer.parseInt(parts[2]);
-
-                        String key = username + ":" + ip + ":" + peerPort;
-
-                        // ignore our own broadcast
-                        if (username.equals(user.username) && ip.equals(this.getLocalIp())) {
-                            continue;
-                        }
-                        // only attempt if not already connected
-                        if (!clients.containsKey(key)) {
-                            if (!debug) {
-                                System.out.println("Discovered peer: " + username + " at " + ip + ":" + peerPort);
-                            }
-                            sendConnectionRequest(username, ip, peerPort);
-                        } else {
-                            if (debug) {
-                                System.out.println("Discovery: already connected to " + key);
-                            }
-                        }
-                    }
+                    sendConnectionRequest(received);
                     if (EXIT) {
                         break;
                     }
@@ -467,8 +458,12 @@ public class Main {
                             i = parsed_message.length + 1;
                         } else {
                             System.out.println("Usage: /message /<username> <message>");
-                            i = parsed_message.length + 1;
+                            i = parsed_message.length + 1; // exit out
                         }
+                        break;
+                    }
+                    case "/newUser": {
+
                         break;
                     }
                     case "/exit": {
