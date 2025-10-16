@@ -5,7 +5,7 @@
 package database;
 
 import java.sql.Timestamp;
-
+import crypto.CryptoRSA;
 /**
  *
  * @author theunknown
@@ -53,5 +53,10 @@ public class UserInfo{
         
         public void setPublicKey(byte[] publicKeyByte){
             this.PublicKey = publicKeyByte;
+        }
+        
+        public String getMd5(){
+            CryptoRSA crypt = new CryptoRSA();
+            return crypt.md5Fingerprint(this.PublicKey);
         }
     }

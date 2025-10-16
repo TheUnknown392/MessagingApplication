@@ -10,24 +10,32 @@ package main;
  */
 public class ConnectionKey {
 
-    String username;
+    String md5;
     String ip;
     String port;
 
-    public ConnectionKey(String username, String ip, String port) {
-        this.username = username;
+    public ConnectionKey(String md5, String ip, String port) {
+        this.md5 = md5;
         this.ip = ip;
         this.port = port;
     }
 
     public ConnectionKey(String key, String PREFIX_CONNECT) {
+        if(PREFIX_CONNECT == null){
+            String[] parts = key.split(":");
+            this.md5 = parts[0];
+            this.ip = parts[1];
+            this.port = parts[2];
+            return;
+        }
+        
         if (key != null && key.startsWith(PREFIX_CONNECT)) {
             String[] parts = key.substring(PREFIX_CONNECT.length()).split(":");
-            this.username = parts[0];
+            this.md5 = parts[0];
             this.ip = parts[1];
             this.port = parts[2];
         } else {
-            this.username = null;
+            this.md5 = null;
             this.ip = null;
             this.port = null;
         }
@@ -35,7 +43,7 @@ public class ConnectionKey {
 
     @Override
     public String toString() {
-        String toReturn = this.username + ":" + this.ip + ":" + this.port;
+        String toReturn = this.md5 + ":" + this.ip + ":" + this.port;
         return toReturn;
     }
 

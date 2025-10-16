@@ -19,11 +19,11 @@ public class Main {
 
     protected static Boolean EXIT = false;
 
-    // String Key = peerUser + ":" + peerIp +":"+ peerPort;
-    protected static ConcurrentHashMap<ConnectionKey, Socket> clients = new ConcurrentHashMap<>();
+    // String Key = md5 + ":" + peerIp +":"+ peerPort;
+    protected static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<>();
 
     // list of clients who couldn't connect. We wait for them
-    protected static ConcurrentHashMap<ConnectionKey, Long> lastConnectAttempt = new ConcurrentHashMap<>();
+    protected static ConcurrentHashMap<String, Long> lastConnectAttempt = new ConcurrentHashMap<>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
 
     private UserInfo user = null;
@@ -98,18 +98,18 @@ public class Main {
         }
         int peerServerPort = Integer.parseInt(connectionKey.port);
         // ignore our own broadcast
-        if (connectionKey.username.equals(user.username) && connectionKey.ip.equals(getLocalIp())) {
+        if (connectionKey.md5.equals(user.getMd5()) && connectionKey.ip.equals(getLocalIp())) {
             return;
         }
         // only attempt if not already connected
-        if (clients.containsKey(connectionKey)) {
+        if (clients.containsKey(connectionKey.toString())) {
             return;
         }
 
         if (falseConnection(connectionKey)) {
             return;
         }
-        System.out.println(connectionKey);
+        System.out.println("sendConnectionRequest " + connectionKey);
 
         new Thread(() -> {
             Socket host = null;
@@ -117,7 +117,7 @@ public class Main {
                 host = new Socket();
                 host.connect(new InetSocketAddress(connectionKey.ip, peerServerPort));
 
-                String requestKey = PREFIX_CONNECT + user.username + ":" + getLocalIp() + ":" + this.port;
+                String requestKey = PREFIX_CONNECT + user.getMd5() + ":" + getLocalIp() + ":" + this.port;
                 
                 PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
                 writer.println(requestKey);
@@ -128,12 +128,12 @@ public class Main {
 
                 if (host.isConnected()) {
                     lastConnectAttempt.remove(connectionKey);
-                    clients.put(connectionKey, host);
+                    clients.put(connectionKey.toString(), host);
                     if (debug) {
                         System.out.println("Addded key (sendConnectionRequest): " + connectionKey);
                     }
                     // listen to message from the thread
-                    new Thread(new get_message(host, connectionKey.username)).start();
+                    new Thread(new get_message(host, connectionKey.md5)).start();
 
                 }
             } catch (NoRouteToHostException e) {
@@ -163,7 +163,7 @@ public class Main {
         final long now = System.currentTimeMillis();
         Long last = lastConnectAttempt.get(connectionKey);
 
-        if (clients.containsKey(connectionKey)) {
+        if (clients.containsKey(connectionKey.toString())) {
             if (debug) {
                 System.out.println("Already connected to " + connectionKey);
             }
@@ -175,7 +175,7 @@ public class Main {
             }
             return true;
         }
-        lastConnectAttempt.put(connectionKey, now);
+        lastConnectAttempt.put(connectionKey.toString(), now);
         return false;
     }
 
@@ -303,6 +303,7 @@ public class Main {
         if (true) { // needed while making
             System.out.println("your ip is: " + getLocalIp());
             System.out.println("your username: " + user.username);
+            System.out.println("Your fingerpring: " + user.getMd5());
             System.out.println("your port: " + this.port);
         }
 
@@ -315,7 +316,7 @@ public class Main {
                     BufferedReader in = new BufferedReader(new InputStreamReader(incoming.getInputStream()));
 
 //                    incoming.setSoTimeout(5000);
-                    String peerIdentity = in.readLine(); // PREFIX_CONNECT:username:ip:port
+                    String peerIdentity = in.readLine(); // PREFIX_CONNECT:md5:ip:port
                     ConnectionKey connectionKey = new ConnectionKey(peerIdentity, PREFIX_CONNECT);
                     // if connection was invalid empty
                     if (connectionKey.ip == null) {
@@ -323,14 +324,14 @@ public class Main {
                         continue;
                     }
                     // if connection were us
-                    if (connectionKey.username.equals(user.username) && connectionKey.ip.equals(this.getLocalIp())) {
+                    if (connectionKey.md5.equals(user.getMd5()) && connectionKey.ip.equals(getLocalIp())) {
                         incoming.close();
                         continue;
                     }
                     
 
                     // if already connected, close duplicate incoming connection
-                    if (clients.containsKey(connectionKey)) {
+                    if (clients.containsKey(connectionKey.toString())) {
                         if (debug) {
                             System.out.println("Duplicate incoming connection for " + connectionKey + ", closing");
                         }
@@ -343,12 +344,13 @@ public class Main {
                     }
 
                     // otherwise register and start handler
-                    clients.put(connectionKey, incoming);
+                    clients.put(connectionKey.toString(), incoming);
+                    
                     if (debug) {
                         System.out.println("Accepted Request: (serverThread)" + getLocalIp());
                         System.out.println("Added Key (ServerThread): " + connectionKey);
                     }
-                    new Thread(new get_message(incoming, connectionKey.username)).start();
+                    new Thread(new get_message(incoming, connectionKey.md5)).start();
                 } catch (IOException e) {
                     System.err.println("Error accepting client: " + e.getMessage());
                 }
@@ -360,7 +362,7 @@ public class Main {
 
         // UDP broadcasting presence
         new Thread(() -> {
-            String message = PREFIX_CONNECT + user.username + ":" + getLocalIp() + ":" + this.port;
+            String message = PREFIX_CONNECT + user.getMd5() + ":" + getLocalIp() + ":" + this.port;
 
             if (debug) {
                 System.out.println("broadcasting this message in bytes: " + message);
@@ -422,14 +424,19 @@ public class Main {
             }
         }).start();
     }
-
-    private static void send_message(String userkey, String message) {
-        if (!clients.containsKey(userkey)) {
+    
+    protected void send_message(String userkey, String message) {
+        ConnectionKey connectionKey = new ConnectionKey(userkey, null);
+        
+        System.out.println("send_message: " + userkey);
+        System.out.println("send_message: " + connectionKey);
+        
+        if (!clients.containsKey(connectionKey.toString())) {
             System.err.println("User does not exist");
             return;
         }
 
-        Socket activeSocket = clients.get(userkey);
+        Socket activeSocket = clients.get(connectionKey.toString());
 
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);
@@ -452,9 +459,9 @@ public class Main {
 
             for (int i = 0; i < parsed_message.length; i++) {
                 switch (parsed_message[0]) {
-                    case "/message": { // this should have /message /<username> hello
+                    case "/message": { // this should have /message /<md5> hello
                         if (parsed_message.length > 1 && parsed_message[1].contains("/")) {
-                            send_message(parsed_message[1].substring(1), String.join(" ", Arrays.copyOfRange(parsed_message, 2, parsed_message.length)));
+                            messenger.send_message(parsed_message[1].substring(1), String.join(" ", Arrays.copyOfRange(parsed_message, 2, parsed_message.length)));
                             i = parsed_message.length + 1;
                         } else {
                             System.out.println("Usage: /message /<username> <message>");
