@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 
 import crypto.*;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.Scanner;
 
 /**
@@ -25,9 +26,18 @@ public class Query {
     private Connection conn;
     public boolean debug;
 
-    public Query(Connection conn, boolean debug) {
-        this.conn = conn;
+    public Query(boolean debug) {
+        //TODO: input databse information by userinput
+        this.conn = new GetConnectionDB("localhost", "3306", "messagedb", "user", "1234", debug).getConnection();
         this.debug = debug;
+    }
+    
+    public void closeConnection(){
+        try {
+            this.conn.close();
+        } catch (SQLException ex) {
+           // Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     /**
@@ -137,6 +147,76 @@ public class Query {
                 System.out.println("user not added");
                 return true;
             }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        }finally{
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return false;
+    }
+    
+    public boolean saveNewSender(SenderInfo sender){
+//            String sql = "CREATE TABLE IF NOT EXISTS senders ("
+//                + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
+//                + "username TEXT NOT NULL,"
+//                + "public_key VARBINARY(600) NOT NULL,"
+//                + "fingerprint varchar(20) NOT NULL,";
+//                + "encrypted_aes_key VARBINARY(600),"
+//                + "encounter_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+//                + ");";
+        try {
+            stmt = conn.prepareStatement("INSERT INTO senders(username, public_key, fingerprint, encrypted_aes_key) values(?,?,?,?)");
+            stmt.setString(1, sender.username);
+            // TODO: aes keys
+            SecureRandom random = new SecureRandom();
+            byte[] randomBytes = new byte[20];
+            random.nextBytes(randomBytes);
+            
+            sender.setEncryptedAES(randomBytes);
+            //
+            stmt.setBytes(2, sender.getPublicKey());
+            if(sender.setFingerprint()) return true;
+            stmt.setString(3, sender.getFingerpring());
+            stmt.setBytes(4, sender.getEncryptedAES());
+            
+            int effectedRow = stmt.executeUpdate();
+            
+            if (effectedRow == 0){
+                System.out.println("user not added");
+                return true;
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        }finally{
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return false;
+    }
+    public boolean hasSender(String md5){
+        try {
+            stmt = conn.prepareStatement("SELECT COUNT(*) FROM senders WHERE fingerprint = ?");
+            stmt.setString(1, md5);
+            ResultSet rs = stmt.executeQuery();
+            rs.next();
+            
+            if(rs.getInt(1)==1){
+                return true;
+            }else if(rs.getInt(1)>1){
+                System.err.println("dublicate senders (hasSender)");
+            }else{
+                return false;
+            }
+            
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
         }finally{

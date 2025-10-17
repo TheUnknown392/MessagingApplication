@@ -36,6 +36,16 @@ public class GetConnectionDB {
         
         this.debug = debug;
     }
+    
+    public GetConnectionDB(DatabaseInfo database, boolean debug) {
+        this.dbhost = database.getHost();
+        this.dbport = database.getPort();
+        this.dbName = database.getDatabase();
+        this.dbuser = database.getUser();
+        this.dbpassword = database.getPassword();
+        
+        this.debug = debug;
+    }
     /**
      * returns connection to given database information and setus up database if not found. 
      * @return 
@@ -53,7 +63,7 @@ public class GetConnectionDB {
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
                     + " CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
-            System.out.println("Database created or already exists: " + dbName);
+          //  System.out.println("Database created or already exists: " + dbName);
         }catch(SQLException e){
             System.out.println("cannot create database"+e.getMessage());
         }
@@ -65,7 +75,7 @@ public class GetConnectionDB {
         } catch (SQLException e) {
             System.out.println("Cannnot connect to the database:"+e.getMessage());
         }
-        System.out.println("Connected to new database: " + dbName);
+       // System.out.println("Connected to new database: " + dbName);
 
         // Create all tables
         createUsersTable();
@@ -99,6 +109,7 @@ public class GetConnectionDB {
                 + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "username TEXT NOT NULL,"
                 + "public_key VARBINARY(600) NOT NULL,"
+                + "fingerprint VARCHAR(45) NOT NULL,"
                 + "encrypted_aes_key VARBINARY(600),"
                 + "encounter_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 + ");";

@@ -9,7 +9,6 @@ package main;
  * @author theunknown
  */
 public class ConnectionKey {
-
     String md5;
     String ip;
     String port;

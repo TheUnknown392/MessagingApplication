@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -31,7 +32,7 @@ import java.util.logging.Logger;
 public class CryptoRSA {
 
     private static final String ALGORITHM = "RSA";
-    private static final int DEFAULT_KEY_SIZE = 2048;
+    public static final int DEFAULT_KEY_SIZE = 2048;
 
     /**
      * Generate RSA key pair
@@ -74,8 +75,17 @@ public class CryptoRSA {
      * @param publicKey
      * @return
      */
-    public String publicKeyToString(PublicKey publicKey) {
+    public static String publicKeyToString(PublicKey publicKey) {
         return Base64.getEncoder().encodeToString(publicKey.getEncoded());
+    }
+    /**
+     * Convert byte[] public key to Base64 string
+     *
+     * @param publicKey
+     * @return
+     */
+    public static String publicKeyToString(byte[] publicKey) {
+        return Base64.getEncoder().encodeToString(publicKey);
     }
 
     /**
@@ -113,12 +123,12 @@ public class CryptoRSA {
     /**
      * Convert Base64 string back to PrivateKey
      *
-     * @param privateKeyString
+     * @param KeyString
      * @return
      */
-    public PrivateKey getPrivateKeyFromString(String privateKeyString) {
+    public PrivateKey getPrivateKeyFromString(String KeyString) {
         try {
-            byte[] keyBytes = Base64.getDecoder().decode(privateKeyString);
+            byte[] keyBytes = Base64.getDecoder().decode(KeyString);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
             KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
             return keyFactory.generatePrivate(spec);
@@ -219,5 +229,21 @@ public class CryptoRSA {
             Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
+    }
+    public static String md5Fingerprint(byte[] publicKeyBytes){
+        StringBuilder md5 = null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(publicKeyBytes);
+            
+            md5 = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                md5.append(String.format("%02x", b));
+            }
+            return md5.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
     }
 }
