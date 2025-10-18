@@ -26,9 +26,9 @@ public class Main {
     // String Key = md5 + ":" + peerIp +":"+ peerPort;
     protected static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<>();
 
-    // list of clients who couldn't connect. We wait for them
-    protected static ConcurrentHashMap<String, Long> lastConnectAttempt = new ConcurrentHashMap<>();
-    private static final long CONNECT_COOLDOWN_MS = 10000; // 10s cooldown
+    // list of clients who aren't in our database
+    protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
+    private static final long CONNECT_COOLDOWN_MS = 20000; // 10s cooldown
 
     private UserInfo user = null;
 
@@ -36,7 +36,7 @@ public class Main {
     private int udp_port;
 
     private final int port = 9332;
-    private final int portAsk = port +1;
+    private final int portAsk = port+1;
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
@@ -82,12 +82,12 @@ public class Main {
             query.closeConnection();
             return false;
         }
+        query.closeConnection();
 
         System.out.println("Input your password: ");
         String password = scan.nextLine();
 
         boolean verification = new CryptoPassword(this.debug).verifyPassword(user, password);
-        query.closeConnection();
         return verification;
     }
 
@@ -102,14 +102,18 @@ public class Main {
         if (connectionKey.ip == null) {
             return;
         }
+        // ignore if Senders are not known
+        if(unknownConnection.containsKey(connectionKey.toString())){
+            return;
+        }
         // ignore if already connected
         if (clients.containsKey(connectionKey.toString())) {
             return;
         }
         // ignore if not in our database
         if (falseConnection(connectionKey)) {
-            lastConnectAttempt.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
-            if(debug) lastConnectAttempt.forEach((key, value) ->{
+            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
+            if(debug) unknownConnection.forEach((key, value) ->{
                 System.out.println(key);
             });
             return;
@@ -117,7 +121,9 @@ public class Main {
 
         int peerServerPort = Integer.parseInt(connectionKey.port);
         
-        System.out.println("send Connection request to(sendConnectionRequest): "+ connectionKey.toString());
+        if(debug){
+            System.out.println("send Connection request to(sendConnectionRequest): "+ connectionKey.toString());    
+        }
 
         new Thread(() -> {
             Socket host = null;
@@ -140,7 +146,7 @@ public class Main {
                         System.out.println("Addded key (sendConnectionRequest): " + connectionKey);
                     }
                     // listen to message from the thread
-                    new Thread(new get_message(host, connectionKey.md5)).start();
+                    new Thread(new get_message(host, connectionKey.md5,this.debug)).start();
 
                 }
             } catch (NoRouteToHostException e) {
@@ -160,7 +166,7 @@ public class Main {
     }
 
     /**
-     * returns true if there is a false connection.
+     * returns true if there Sender is not known in our database.
      *
      * @param key
      * @return
@@ -174,85 +180,7 @@ public class Main {
         query.closeConnection();
         return false;
     }
-
-    /**
-     * handles clients incomming messages and sends connection requests to
-     * clients
-     */
-    private class get_message implements Runnable {
-
-//        String message;
-        String username;
-
-        Socket socket;
-        BufferedReader reader = null;
-        PrintWriter writer = null;
-
-        public get_message(Socket socket, String peerUser) {
-            if (debug) {
-                System.out.println("ready to recieved message from: (clientHandler): " + peerUser + ":" + socket.getInetAddress().toString().substring(1));
-            }
-
-            this.socket = socket;
-            this.username = peerUser;
-            try {
-                reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-                writer = new PrintWriter(socket.getOutputStream(), true);
-            } catch (IOException e) {
-                System.err.println("Handler setup error: " + e.getMessage());
-                cleanup();
-            }
-            if (debug) {
-                System.out.println("Conntected client: " + username);
-            }
-        }
-
-        @Override
-        public void run() {
-            try {
-                // TODO handel through EncryptedMessage
-                String message;
-                while ((message = reader.readLine()) != null) {
-                    System.out.println(username + ": " + message);
-                    if (EXIT) {
-                        break;
-                    }
-                }
-            } catch (IOException ex) {
-                System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-            } finally {
-                cleanup();
-            }
-        }
-
-        private void cleanup() {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException ignored) {
-            }
-
-            if (writer != null) {
-                writer.close();
-            }
-
-            try {
-                if (socket != null && !socket.isClosed()) {
-                    socket.close();
-                }
-            } catch (IOException ignored) {
-            }
-
-            // remove this socket from clients list map thingie
-            clients.entrySet().removeIf(e -> e.getValue() == this.socket);
-            if (!debug) {
-                System.out.println("Connection closed for: " + username);
-            }
-        }
-
-    }
-
+    
     /**
      * gets local IP
      *
@@ -287,7 +215,10 @@ public class Main {
         }
         return "127.0.0.1"; // fallback
     }
-
+    /**
+     * Opens server for new Sender requests
+     * @param scan 
+     */
     private void newSenderInPermission(Scanner scan) {
         System.out.println("Enter y or n: ");
         try {
@@ -373,7 +304,7 @@ public class Main {
                         // allow connection with known user only
                         if (falseConnection(connectionKey)) {
                             System.out.println("connection closed for (server): " + peerIdentity);
-                            lastConnectAttempt.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
+                            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
                             incoming.close();
                             continue;
                         }
@@ -389,7 +320,7 @@ public class Main {
                             System.out.println("Accepted Request: (serverThread)" + getLocalIp());
                             System.out.println("Added Key (ServerThread): " + connectionKey);
                         }
-                        new Thread(new get_message(incoming, connectionKey.md5)).start();
+                        new Thread(new get_message(incoming, connectionKey.md5,this.debug)).start();
                     }
 
                 } catch (IOException e) {
@@ -490,16 +421,19 @@ public class Main {
             System.err.println("Could not create a new reader and writer to send message: " + e.getMessage());
         }
     }
-
+    
+    /**
+     * displays active unknown Senders to send message request to
+     */
     protected void connectNewSender() {
         long now = System.currentTimeMillis();
-        lastConnectAttempt.entrySet().removeIf(
+        unknownConnection.entrySet().removeIf(
                 (entry) -> entry.getValue() < (now - CONNECT_COOLDOWN_MS)
         );
         final List<String> availableKeys = new ArrayList<>();
 
         // Show only entries within cooldown period
-        lastConnectAttempt.forEach((key, value) -> {
+        unknownConnection.forEach((key, value) -> {
             if (value >= (now - CONNECT_COOLDOWN_MS)) {
                 System.out.println(availableKeys.size() + ": " + key);
                 availableKeys.add(key);
@@ -522,7 +456,11 @@ public class Main {
         String chosenKey = availableKeys.get(choice);
         getSenderInfo(chosenKey);
     }
-
+    
+    /**
+     * gets Senders username, rsa
+     * @param stringKey 
+     */
     protected void getSenderInfo(String stringKey) {
         ConnectionKey senderConnectionKey = new ConnectionKey(stringKey, null);
         int peerServerPort = Integer.parseInt(senderConnectionKey.port)+1; // convention that the ask port will be +1 of the main server port
@@ -597,10 +535,12 @@ public class Main {
                     }
                     case "/newSender": {
                         messenger.connectNewSender();
+                        i = parsed_message.length + 1; // exit out
                         break;
                     }
                     case "/openSender":{
                         messenger.newSenderInPermission(scan);
+                        i = parsed_message.length + 1; // exit out
                         break;
                     }
                     case "/exit": {

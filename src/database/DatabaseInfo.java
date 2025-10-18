@@ -16,6 +16,14 @@ public class DatabaseInfo {
     private String user;
     private String password;
     
+    public DatabaseInfo(String host, String port, String dbName, String user, String password) {
+        this.host = host;
+        this.port = port;
+        this.database = dbName;
+        this.user = user;
+        this.password = password;
+    }
+    
     public void setHost(String host){
         this.host = host;
     }

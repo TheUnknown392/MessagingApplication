@@ -1,17 +1,15 @@
-package crypto;
-
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
+package crypto;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -28,9 +26,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.crypto.AEADBadTagException;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 /**
  *
@@ -164,17 +159,7 @@ public class CryptoMessage {
             byte[] cipherText = cipher.doFinal(plaintext.getBytes());
             
             return new EncryptedMessage(cipherText, iv);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchPaddingException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidKeyException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidAlgorithmParameterException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalBlockSizeException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (BadPaddingException ex) {
+        } catch (Exception ex) {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
@@ -205,13 +190,7 @@ public class CryptoMessage {
                 System.out.println("Some security Error: " + e.getMessage());
                 System.exit(3);
             }
-        } catch (InvalidKeyException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidAlgorithmParameterException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchPaddingException ex) {
+        } catch (Exception ex) {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;

@@ -51,7 +51,7 @@ public class CryptoRSA {
     }
     
     /**
-     * saves public key into the database and saves private key into a file
+     * saves public key into the UserInfo and saves private key into a file
      * @param user
      * @param username
      * @throws IOException 
@@ -230,6 +230,12 @@ public class CryptoRSA {
             return null;
         }
     }
+    
+    /**
+     * converts public key to md5 fingerprint string
+     * @param publicKeyBytes
+     * @return 
+     */
     public static String md5Fingerprint(byte[] publicKeyBytes){
         StringBuilder md5 = null;
         try {

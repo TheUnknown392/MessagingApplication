@@ -4,14 +4,15 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/home/theunknown/git/MessagingApplication/src/main/Main.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/main/get_message.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/database/Query.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/DatabaseInfo.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoMessage.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoPassword.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoRSA.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/database/UserInfo.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/database/SenderInfo.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoMessage.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/main/ConnectionKey.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoRSA.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/database/Test.java</file>
         </group>
     </open-files>
 </project-private>

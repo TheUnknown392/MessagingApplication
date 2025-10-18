@@ -57,6 +57,7 @@ public class GetConnectionDB {
             this.conn = DriverManager.getConnection(serverUrl, dbuser, dbpassword);
         } catch (SQLException e) {
             System.out.println("cannot get connection to server:"+e.getMessage());
+            System.exit(101);
         }
 
         // Create the database if it doesn't exist

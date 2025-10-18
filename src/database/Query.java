@@ -32,6 +32,13 @@ public class Query {
         this.debug = debug;
     }
     
+    public Query(DatabaseInfo databaseInfo, boolean debug){
+        this.conn = new GetConnectionDB(databaseInfo, debug).getConnection();
+        this.debug = debug;
+    }
+     /**
+      * closes the created connection
+      */
     public void closeConnection(){
         try {
             this.conn.close();
@@ -160,6 +167,11 @@ public class Query {
         return false;
     }
     
+    /**
+     * saves sender into the database
+     * @param sender
+     * @return 
+     */
     public boolean saveNewSender(SenderInfo sender){
 //            String sql = "CREATE TABLE IF NOT EXISTS senders ("
 //                + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
@@ -202,6 +214,12 @@ public class Query {
         }
         return false;
     }
+    
+    /**
+     * returns true if sender's md5 is present in database.
+     * @param md5
+     * @return 
+     */
     public boolean hasSender(String md5){
         try {
             stmt = conn.prepareStatement("SELECT COUNT(*) FROM senders WHERE fingerprint = ?");
