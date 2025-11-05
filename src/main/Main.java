@@ -28,15 +28,15 @@ public class Main {
 
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
-    private static final long CONNECT_COOLDOWN_MS = 20000; // 10s cooldown
+    private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
 
     private UserInfo user = null;
 
     private String Broadcast_id;
     private int udp_port;
-
-    private final int port = 9332;
-    private final int portAsk = port+1;
+    // TODO: make ports increment if port buisy
+    private final int port = 9332; 
+    private final int portAsk = port+1; // convention?
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
@@ -173,7 +173,7 @@ public class Main {
      */
     private boolean falseConnection(ConnectionKey connectionKey) {
         Query query = new Query(this.debug);
-        if (!query.hasSender(connectionKey.md5)) {
+        if (!query.hasCommunication(user.getId() ,connectionKey.md5)) {
             query.closeConnection();
             return true;
         }
@@ -427,9 +427,6 @@ public class Main {
      */
     protected void connectNewSender() {
         long now = System.currentTimeMillis();
-        unknownConnection.entrySet().removeIf(
-                (entry) -> entry.getValue() < (now - CONNECT_COOLDOWN_MS)
-        );
         final List<String> availableKeys = new ArrayList<>();
 
         // Show only entries within cooldown period
@@ -447,7 +444,13 @@ public class Main {
 
         System.out.print("Input the number to connect the Sender: ");
         Scanner scan = new Scanner(System.in);
-        int choice = scan.nextInt();
+        int choice = -1;
+        try{
+            choice = scan.nextInt();
+        }catch(InputMismatchException e){
+            System.out.println("Please input number next time"); // TODO: improve this?
+            return;
+        }
 
         if (choice < 0 || choice >= availableKeys.size()) {
             System.out.println("Invalid choice.");
@@ -481,16 +484,21 @@ public class Main {
             }
 
             if (host.isConnected()) {
-                String userInfoString = reader.readLine();
+                String senderReply = reader.readLine();
 
-                if (userInfoString.equals("REJECTED:")) {
+                if (senderReply.equals("REJECTED:")) {
                     System.out.println("request rejected");
                     return;
                 }
-                NewConnection newConnection = new NewConnection(userInfoString, PREFIX_REPLY_INFORMATION);
+                NewConnection newConnection = new NewConnection(senderReply, PREFIX_REPLY_INFORMATION);
                 System.out.println("Reply: " + newConnection);
+                
                 Query query = new Query(this.debug);
-                query.saveNewSender(new SenderInfo(newConnection.username, newConnection.publicKey));
+                
+                SenderInfo sender = new SenderInfo(newConnection.username, newConnection.publicKey);
+                
+                query.newConversation(this.user, sender);
+                unknownConnection.remove(stringKey);
                 query.closeConnection();
             }
         } catch (SocketTimeoutException ex) {

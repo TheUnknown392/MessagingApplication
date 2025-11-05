@@ -20,8 +20,9 @@ import java.util.Scanner;
  *
  * @author theunknown
  */
-public class Query {
 
+public class Query {
+    // TODO: update COUNT operation to boolean returning query
     public PreparedStatement stmt;
     private Connection conn;
     public boolean debug;
@@ -31,26 +32,28 @@ public class Query {
         this.conn = new GetConnectionDB("localhost", "3306", "messagedb", "user", "1234", debug).getConnection();
         this.debug = debug;
     }
-    
-    public Query(DatabaseInfo databaseInfo, boolean debug){
+
+    public Query(DatabaseInfo databaseInfo, boolean debug) {
         this.conn = new GetConnectionDB(databaseInfo, debug).getConnection();
         this.debug = debug;
     }
-     /**
-      * closes the created connection
-      */
-    public void closeConnection(){
+
+    /**
+     * closes the created connection
+     */
+    public void closeConnection() {
         try {
             this.conn.close();
         } catch (SQLException ex) {
-           // Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            // Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     /**
      * get UserInfo from database. return null if can't find data
+     *
      * @param username
-     * @return 
+     * @return
      */
     public UserInfo getUser(String username) {
         UserInfo user = null;
@@ -67,7 +70,7 @@ public class Query {
                 user.setPublicKey(rs.getBytes("public_key"));
                 user.created_at = rs.getTimestamp("created_at");
             }
-        }catch (SQLException ex) {
+        } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
         }
         return user;
@@ -75,37 +78,38 @@ public class Query {
 
     /**
      * creates new UserInfo and all its related property
+     *
      * @param username
      * @param password
-     * @return 
+     * @return
      */
     public UserInfo createUser(String username, String password) {
         UserInfo user = null;
         ResultSet rs = null;
         try {
             user = new UserInfo();
-            
+
             boolean taken = true;
             do {
                 stmt = conn.prepareStatement("SELECT COUNT(*) FROM users WHERE username = ?");
                 stmt.setString(1, username);
 
                 rs = stmt.executeQuery();
-                rs.next();
-                
-                if(rs.getInt(1) == 0){
-                    taken = false;
-                }else{
-                    System.out.println("username already taken.");
-                    Scanner scan = new Scanner(System.in);
-                    username = scan.nextLine();
+                if (rs.next()) {
+                    if (rs.getInt(1) == 0) {
+                        taken = false;
+                    } else {
+                        System.out.println("username already taken.");
+                        Scanner scan = new Scanner(System.in);
+                        username = scan.nextLine();
+                    }
                 }
 
             } while (taken);
 
             user.username = username; // set username 
 
-            CryptoRSA crypt = new CryptoRSA(); 
+            CryptoRSA crypt = new CryptoRSA();
             CryptoPassword pass = new CryptoPassword(this.debug);
             pass.setPasswordHashedSalt(user, password); // set hashed password and salt
 
@@ -137,8 +141,9 @@ public class Query {
 
     /**
      * saves UserInfo to the database and returns true if fails
+     *
      * @param user
-     * @return 
+     * @return
      */
     public boolean saveNewUser(UserInfo user) {
         try {
@@ -147,16 +152,16 @@ public class Query {
             stmt.setBytes(2, user.getPasswordHashed());
             stmt.setBytes(3, user.getSalt());
             stmt.setBytes(4, user.getPublicKey());
-            
+
             int effectedRow = stmt.executeUpdate();
-            
-            if (effectedRow == 0){
+
+            if (effectedRow == 0) {
                 System.out.println("user not added");
                 return true;
             }
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
-        }finally{
+        } finally {
             try {
                 stmt.close();
                 stmt = null;
@@ -166,21 +171,14 @@ public class Query {
         }
         return false;
     }
-    
+
     /**
      * saves sender into the database
+     *
      * @param sender
-     * @return 
+     * @return
      */
-    public boolean saveNewSender(SenderInfo sender){
-//            String sql = "CREATE TABLE IF NOT EXISTS senders ("
-//                + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
-//                + "username TEXT NOT NULL,"
-//                + "public_key VARBINARY(600) NOT NULL,"
-//                + "fingerprint varchar(20) NOT NULL,";
-//                + "encrypted_aes_key VARBINARY(600),"
-//                + "encounter_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-//                + ");";
+    public boolean saveNewSender(SenderInfo sender) {
         try {
             stmt = conn.prepareStatement("INSERT INTO senders(username, public_key, fingerprint, encrypted_aes_key) values(?,?,?,?)");
             stmt.setString(1, sender.username);
@@ -188,23 +186,34 @@ public class Query {
             SecureRandom random = new SecureRandom();
             byte[] randomBytes = new byte[20];
             random.nextBytes(randomBytes);
-            
+
             sender.setEncryptedAES(randomBytes);
             //
             stmt.setBytes(2, sender.getPublicKey());
-            if(sender.setFingerprint()) return true;
+            if (sender.setFingerprint()) {
+                return true;
+            }
             stmt.setString(3, sender.getFingerpring());
             stmt.setBytes(4, sender.getEncryptedAES());
-            
+
             int effectedRow = stmt.executeUpdate();
-            
-            if (effectedRow == 0){
+
+            if (effectedRow == 0) {
                 System.out.println("user not added");
                 return true;
             }
+
+            stmt = conn.prepareStatement("SELECT sid FROM senders where public_key = ?");
+            stmt.setBytes(1, sender.getPublicKey());
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                sender.setId(rs.getInt("sid"));
+            } else {
+                System.err.println("unable to get sid of user " + sender.username); // TODO: remove the invalid user from database
+            }
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
-        }finally{
+        } finally {
             try {
                 stmt.close();
                 stmt = null;
@@ -215,29 +224,129 @@ public class Query {
         return false;
     }
     
-    /**
-     * returns true if sender's md5 is present in database.
-     * @param md5
-     * @return 
-     */
-    public boolean hasSender(String md5){
+    public SenderInfo getSender(String md5){
+        SenderInfo sender = null;
         try {
-            stmt = conn.prepareStatement("SELECT COUNT(*) FROM senders WHERE fingerprint = ?");
+            stmt = conn.prepareStatement("SELECT * from senders where fingerprint = ?");
             stmt.setString(1, md5);
+            
             ResultSet rs = stmt.executeQuery();
-            rs.next();
-            
-            if(rs.getInt(1)==1){
-                return true;
-            }else if(rs.getInt(1)>1){
-                System.err.println("dublicate senders (hasSender)");
-            }else{
-                return false;
+            sender = new SenderInfo(rs.getString("username"),rs.getString("md5"));
+            if (rs.next()) {
+                rs.getInt("sid");
+            } else {
+                System.err.println("unable to get info of sender (getSender)"); // TODO: remove the invalid user from database
             }
-            
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
-        }finally{
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return sender;
+    }
+
+    public boolean newConversation(UserInfo user, SenderInfo sender) {
+        // TODO: have the aes key in conversation_participants
+
+        if (!hasSender(sender.getFingerpring())) {
+            if (saveNewSender(sender)) {
+                System.err.println("failed to save new sender (newConversation)");
+            }
+        }else{
+            sender = getSender(sender.getFingerpring());
+        }
+
+        try {
+            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid) values(?,?);");
+            stmt.setInt(1, user.id);
+            stmt.setInt(2, sender.getId());
+            if (!debug) {
+                System.out.println("INSERT INTO communication_participants(uid, sid) values(" + user.id + "," + sender.getId() + ");");
+            }
+
+            int effectedRow = stmt.executeUpdate();
+
+            if (effectedRow == 0) {
+                System.out.println("conversation not added");
+                return true;
+            }
+
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return false;
+    }
+    
+    public boolean hasSender(String md5){
+        try {
+            stmt = conn.prepareStatement("SELECT COUNT(*) AS count\n"
+                    + "FROM senders where fingerprint = ?\n");
+            stmt.setString(1, md5);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                if (rs.getInt("count") == 1) {
+                    return true;
+                } else if (rs.getInt("count") > 1) {
+                    System.err.println("dublicate senders (hasSender)");
+                    return false; // TODO: properly handel this.
+                }
+            }
+            return false;
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * returns true if sender's md5 is present in communication_participants
+     * database.
+     *
+     * @param md5
+     * @return
+     */
+    public boolean hasCommunication(int uid, String senderMd5) {
+        try {
+            stmt = conn.prepareStatement("SELECT COUNT(*) AS count\n"
+                    + "FROM communication_participants cp\n"
+                    + "JOIN senders s ON cp.sid = s.sid\n"
+                    + "WHERE cp.uid = ? AND s.fingerprint = ?;");
+            stmt.setInt(1, uid);
+            stmt.setString(2, senderMd5);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                if (rs.getInt("count") == 1) {
+                    return true;
+                } else if (rs.getInt("count") > 1) {
+                    System.err.println("dublicate senders (hasSender)");
+                    return false; // TODO: properly handel this.
+                }
+            }
+            return false;
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
             try {
                 stmt.close();
                 stmt = null;

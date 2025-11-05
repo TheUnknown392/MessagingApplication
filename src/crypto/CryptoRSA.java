@@ -58,7 +58,7 @@ public class CryptoRSA {
      */
     public void saveNewKeys(UserInfo user, String username) throws IOException {
         KeyPair key = generateKeyPair();
-
+        // TODO: make a folder to store key of different users
         String filePath = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
         
         BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));

@@ -11,9 +11,8 @@ package main;
 public class NewConnection {
     String username;
     String publicKey;
-    //TODO: String AES;
     
-    // username:publicKey:aesKey
+    // username:publicKey
     public NewConnection(String key, String PREFIX){
         if (key != null && key.startsWith(PREFIX)) {
             String[] parts = key.substring(PREFIX.length()).split(":");

@@ -2,21 +2,12 @@ package database;
 
 import crypto.CryptoRSA;
 import java.sql.Timestamp;
-import java.util.Base64;
 
 /**
  *
  * @author theunknown
  */
 public class SenderInfo {
-    //            String sql = "CREATE TABLE IF NOT EXISTS senders ("
-//                + "sid BIGINT PRIMARY KEY AUTO_INCREMENT,"
-//                + "username TEXT NOT NULL,"
-//                + "public_key VARBINARY(600) NOT NULL,"
-//                + "encrypted_aes_key VARBINARY(600),"
-//                + "encounter_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-//                + ");";
-
     public SenderInfo(String username, String publicKey){
         CryptoRSA crypt = new CryptoRSA();
         this.username = username;
@@ -45,6 +36,11 @@ public class SenderInfo {
     }
 
     public String getFingerpring() {
+        if(PublicKey==null){
+            if(setFingerprint()){
+                return null;
+            }
+        }
         return this.md5;
     }
 
@@ -70,5 +66,8 @@ public class SenderInfo {
 
     public void setPublicKey(byte[] publicKeyByte) {
         this.PublicKey = publicKeyByte;
+    }
+    public void setId(int sid){
+        this.id = sid;
     }
 }
