@@ -3,3 +3,4 @@ test.java
 test/**
 **/private/**
 build
+/nbproject/private/

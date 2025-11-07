@@ -9,6 +9,7 @@ package main;
  * @author theunknown
  */
 public class NewConnection {
+    // TODO: rename this class with better name
     String username;
     String publicKey;
     

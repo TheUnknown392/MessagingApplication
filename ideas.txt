@@ -1,0 +1,14 @@
+Dealing with get_message and how messages are handled:
+    1. Making a thread that will iterate through the client socket and check for input Buffer inputs of each socket to minimize creating too much threads and reuse same Connection, Statements.
+
+Dealing with message->GUI, message->database, Sender seperation:
+    1. Using Queue:
+        a. Message will go to a Queue
+        b. The queue will recieve <fingerprint/sid>:<message>
+        c. A single thread will handel the queue to first, save message into database then send it to swing
+        c. Swing will handel showing message correctly with properly seperated infos.
+
+Dealing with loading messages into swing:
+    1. Swing will have an always active Connection to the database to query different messages.
+
+TODO: pagination to deal with paging the messages of each private chats
