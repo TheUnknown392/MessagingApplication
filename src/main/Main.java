@@ -13,6 +13,7 @@ import java.util.logging.Logger;
  *
  * @author theunknown
  */
+// TODO: improve adding new users and such.
 public class Main {
 
     Boolean debug = false;
@@ -28,6 +29,7 @@ public class Main {
 
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
+    protected static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
 
     private UserInfo user = null;
@@ -35,8 +37,8 @@ public class Main {
     private String Broadcast_id;
     private int udp_port;
     // TODO: make ports increment if port buisy
-    private final int port = 9332; 
-    private final int portAsk = port+1; // convention?
+    private final int port = 9332;
+    private final int portAsk = port + 1; // convention?
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
@@ -51,6 +53,7 @@ public class Main {
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
+        new Thread(new MessageManager(this.messages)).start();
     }
 
     /**
@@ -76,7 +79,7 @@ public class Main {
 
             user = query.createUser(username, password);
 
-            if (query.saveNewUser(user)) {
+            if ((this.user = query.saveNewUser(user)) == null) {
                 System.exit(1);
             }
             query.closeConnection();
@@ -103,7 +106,7 @@ public class Main {
             return;
         }
         // ignore if Senders are not known
-        if(unknownConnection.containsKey(connectionKey.toString())){
+        if (unknownConnection.containsKey(connectionKey.toString())) {
             return;
         }
         // ignore if already connected
@@ -113,16 +116,18 @@ public class Main {
         // ignore if not in our database
         if (falseConnection(connectionKey)) {
             unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
-            if(debug) unknownConnection.forEach((key, value) ->{
-                System.out.println(key);
-            });
+            if (debug) {
+                unknownConnection.forEach((key, value) -> {
+                    System.out.println(key);
+                });
+            }
             return;
         }
 
         int peerServerPort = Integer.parseInt(connectionKey.port);
-        
-        if(debug){
-            System.out.println("send Connection request to(sendConnectionRequest): "+ connectionKey.toString());    
+
+        if (debug) {
+            System.out.println("send Connection request to(sendConnectionRequest): " + connectionKey.toString());
         }
 
         new Thread(() -> {
@@ -141,12 +146,18 @@ public class Main {
                 }
 
                 if (host.isConnected()) {
+
                     clients.putIfAbsent(connectionKey.toString(), host);
                     if (debug) {
                         System.out.println("Addded key (sendConnectionRequest): " + connectionKey);
                     }
+
+                    Query query = new Query(debug);
+                    SenderInfo sender = query.getSender(connectionKey.md5);
+                    query.closeConnection();
+
                     // listen to message from the thread
-                    new Thread(new get_message(host, connectionKey.md5,this.debug)).start();
+                    new Thread(new get_message(host, sender, messages, this.debug)).start();
 
                 }
             } catch (NoRouteToHostException e) {
@@ -173,14 +184,14 @@ public class Main {
      */
     private boolean falseConnection(ConnectionKey connectionKey) {
         Query query = new Query(this.debug);
-        if (!query.hasCommunication(user.getId() ,connectionKey.md5)) {
+        if (!query.hasCommunication(user.getId(), connectionKey.md5)) {
             query.closeConnection();
             return true;
         }
         query.closeConnection();
         return false;
     }
-    
+
     /**
      * gets local IP
      *
@@ -215,30 +226,34 @@ public class Main {
         }
         return "127.0.0.1"; // fallback
     }
+
     /**
      * Opens server for new Sender requests
-     * @param scan 
+     *
+     * @param scan
      */
     private void newSenderInPermission(Scanner scan) {
         System.out.println("Enter y or n: ");
         try {
             ServerSocket askServer = new ServerSocket(portAsk);
             Socket socket = askServer.accept();
-            
+
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            
-            String peerIdentity = in.readLine(); 
+
+            String peerIdentity = in.readLine();
 
             if (peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
                 RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
                 System.out.println("Request by: " + request.username); // TODO: some abstraction/polymorphism?
-                try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)){
+                try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
                     String choice = scan.nextLine().toLowerCase();
                     if (!(choice.equals("y") || choice.equals("yes"))) {
                         writer.println("REJECTED:");
                     } else {
-                        String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.publicKeyToString(user.getPublicKey());
+                        String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey());
                         writer.println(accepted);
+                        String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
+                        saveSenderInfo(request.username, request.publicKey, key);
                     }
                 } catch (IOException ex) {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -246,11 +261,11 @@ public class Main {
             }
             in.close();
             socket.close();
-        }catch(ConnectException e){
+            askServer.close();
+        } catch (ConnectException e) {
             System.out.println("Connection refused: make /openSender");
-        } 
-        catch (IOException ex) {
-            
+        } catch (IOException ex) {
+
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -313,6 +328,10 @@ public class Main {
                             System.out.println("key server: " + connectionKey);
                         }
 
+                        Query query = new Query(debug);
+                        SenderInfo sender = query.getSender(connectionKey.md5);
+                        query.closeConnection();
+
                         // otherwise register and start handler
                         clients.put(connectionKey.toString(), incoming);
 
@@ -320,7 +339,7 @@ public class Main {
                             System.out.println("Accepted Request: (serverThread)" + getLocalIp());
                             System.out.println("Added Key (ServerThread): " + connectionKey);
                         }
-                        new Thread(new get_message(incoming, connectionKey.md5,this.debug)).start();
+                        new Thread(new get_message(incoming, sender, this.messages, this.debug)).start();
                     }
 
                 } catch (IOException e) {
@@ -403,6 +422,9 @@ public class Main {
 
     protected void send_message(String userkey, String message) {
         ConnectionKey connectionKey = new ConnectionKey(userkey, null);
+        // TODO: properly handel the END_MESSAGE
+        final String END_MESSAGE = ":END_OF_MESSAGE:\n"; 
+       
 
         System.out.println("send_message: " + userkey);
         System.out.println("send_message: " + connectionKey);
@@ -417,17 +439,22 @@ public class Main {
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);
             writer.println(message);
+            writer.println(END_MESSAGE);
         } catch (IOException e) {
             System.err.println("Could not create a new reader and writer to send message: " + e.getMessage());
         }
     }
-    
+
     /**
      * displays active unknown Senders to send message request to
      */
     protected void connectNewSender() {
         long now = System.currentTimeMillis();
         final List<String> availableKeys = new ArrayList<>();
+        // TODO: figure out why this block of code is needed
+        unknownConnection.entrySet().removeIf(entry
+                -> entry.getValue() < (now - CONNECT_COOLDOWN_MS)
+        );
 
         // Show only entries within cooldown period
         unknownConnection.forEach((key, value) -> {
@@ -445,9 +472,9 @@ public class Main {
         System.out.print("Input the number to connect the Sender: ");
         Scanner scan = new Scanner(System.in);
         int choice = -1;
-        try{
+        try {
             choice = scan.nextInt();
-        }catch(InputMismatchException e){
+        } catch (InputMismatchException e) {
             System.out.println("Please input number next time"); // TODO: improve this?
             return;
         }
@@ -459,21 +486,33 @@ public class Main {
         String chosenKey = availableKeys.get(choice);
         getSenderInfo(chosenKey);
     }
-    
+
+    private void saveSenderInfo(String username, String publicKey, String stringKey) {
+        Query query = new Query(this.debug);
+
+        SenderInfo sender = new SenderInfo(username, publicKey);
+
+        query.newConversation(this.user, sender);
+        unknownConnection.remove(stringKey);
+        query.closeConnection();
+    }
+
     /**
      * gets Senders username, rsa
-     * @param stringKey 
+     *
+     * @param stringKey
      */
     protected void getSenderInfo(String stringKey) {
         ConnectionKey senderConnectionKey = new ConnectionKey(stringKey, null);
-        int peerServerPort = Integer.parseInt(senderConnectionKey.port)+1; // convention that the ask port will be +1 of the main server port
+        int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1; // convention that the ask port will be +1 of the main server port
         System.out.println("getSenderInfo: " + senderConnectionKey);
         Socket host = null;
         try {
             host = new Socket();
             host.connect(new InetSocketAddress(senderConnectionKey.ip, peerServerPort), (int) CONNECT_COOLDOWN_MS);
             //TODO: not let users have ':' in their name
-            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.publicKeyToString(user.getPublicKey()) + ":" + getLocalIp() + ":" + this.port;
+            //TODO: be more consistent with RequestInformation
+            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + getLocalIp() + ":" + this.port;
 
             PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
             BufferedReader reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
@@ -492,14 +531,7 @@ public class Main {
                 }
                 NewConnection newConnection = new NewConnection(senderReply, PREFIX_REPLY_INFORMATION);
                 System.out.println("Reply: " + newConnection);
-                
-                Query query = new Query(this.debug);
-                
-                SenderInfo sender = new SenderInfo(newConnection.username, newConnection.publicKey);
-                
-                query.newConversation(this.user, sender);
-                unknownConnection.remove(stringKey);
-                query.closeConnection();
+                saveSenderInfo(newConnection.username, newConnection.publicKey, stringKey);
             }
         } catch (SocketTimeoutException ex) {
             System.err.println("Did not respond");
@@ -546,7 +578,7 @@ public class Main {
                         i = parsed_message.length + 1; // exit out
                         break;
                     }
-                    case "/openSender":{
+                    case "/openSender": {
                         messenger.newSenderInPermission(scan);
                         i = parsed_message.length + 1; // exit out
                         break;

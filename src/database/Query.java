@@ -20,8 +20,8 @@ import java.util.Scanner;
  *
  * @author theunknown
  */
-
 public class Query {
+
     // TODO: update COUNT operation to boolean returning query
     public PreparedStatement stmt;
     private Connection conn;
@@ -145,7 +145,7 @@ public class Query {
      * @param user
      * @return
      */
-    public boolean saveNewUser(UserInfo user) {
+    public UserInfo saveNewUser(UserInfo user) {
         try {
             stmt = conn.prepareStatement("INSERT INTO users(username, password_hashed, salt, public_key) values(?,?,?,?)");
             stmt.setString(1, user.username);
@@ -157,7 +157,16 @@ public class Query {
 
             if (effectedRow == 0) {
                 System.out.println("user not added");
-                return true;
+                return null;
+            }
+            
+            stmt = conn.prepareStatement("SELECT uid from users where username = ? AND public_key = ?");
+            stmt.setString(1, user.username);
+            stmt.setBytes(2, user.getPublicKey());
+            
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                user.id = rs.getInt("uid");
             }
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
@@ -169,7 +178,7 @@ public class Query {
                 Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        return false;
+        return user;
     }
 
     /**
@@ -223,17 +232,20 @@ public class Query {
         }
         return false;
     }
-    
-    public SenderInfo getSender(String md5){
+
+    public SenderInfo getSender(String md5) {
         SenderInfo sender = null;
         try {
             stmt = conn.prepareStatement("SELECT * from senders where fingerprint = ?");
             stmt.setString(1, md5);
-            
+
             ResultSet rs = stmt.executeQuery();
-            sender = new SenderInfo(rs.getString("username"),rs.getString("md5"));
             if (rs.next()) {
-                rs.getInt("sid");
+                int id = rs.getInt("sid");
+                String username = rs.getString("username");
+                String public_key = new CryptoRSA().bytePublicKeyToString(rs.getBytes("public_key"));
+                sender = new SenderInfo(username, public_key);
+                sender.setId(id);
             } else {
                 System.err.println("unable to get info of sender (getSender)"); // TODO: remove the invalid user from database
             }
@@ -257,9 +269,9 @@ public class Query {
             if (saveNewSender(sender)) {
                 System.err.println("failed to save new sender (newConversation)");
             }
-        }else{
-            sender = getSender(sender.getFingerpring());
         }
+        
+        sender = getSender(sender.getFingerpring());
 
         try {
             stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid) values(?,?);");
@@ -288,8 +300,8 @@ public class Query {
         }
         return false;
     }
-    
-    public boolean hasSender(String md5){
+
+    public boolean hasSender(String md5) {
         try {
             stmt = conn.prepareStatement("SELECT COUNT(*) AS count\n"
                     + "FROM senders where fingerprint = ?\n");

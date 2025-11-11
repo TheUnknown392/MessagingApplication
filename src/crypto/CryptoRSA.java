@@ -84,7 +84,7 @@ public class CryptoRSA {
      * @param publicKey
      * @return
      */
-    public static String publicKeyToString(byte[] publicKey) {
+    public static String bytePublicKeyToString(byte[] publicKey) {
         return Base64.getEncoder().encodeToString(publicKey);
     }
 
@@ -106,6 +106,7 @@ public class CryptoRSA {
      */
     public static PublicKey getPublicKeyFromString(String publicKeyString) {
         try {
+            System.out.println("getPublicKeyFromString: " + publicKeyString);
             byte[] keyBytes = Base64.getDecoder().decode(publicKeyString);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
             KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
@@ -251,5 +252,31 @@ public class CryptoRSA {
             Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
+    }
+    
+    public static String md5Fingerprint(String publicKeyString){
+        byte[] publicKeyBytes = stringTobytes(publicKeyString);
+        StringBuilder md5 = null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(publicKeyBytes);
+            
+            md5 = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                md5.append(String.format("%02x", b));
+            }
+            return md5.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+    /**
+     * decodes string and returns its byte[]
+     * @param string
+     * @return 
+     */
+    public static byte[] stringTobytes(String string){
+        return Base64.getDecoder().decode(string);
     }
 }
