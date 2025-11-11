@@ -233,13 +233,15 @@ public class Main {
      * @param scan
      */
     private void newSenderInPermission(Scanner scan) {
+        // TODO: do this properly so it doesn't wait for in.readline() too long
+        System.out.println("waiting for Senders request...");
         System.out.println("Enter y or n: ");
         try {
             ServerSocket askServer = new ServerSocket(portAsk);
+            askServer.setSoTimeout((int) CONNECT_COOLDOWN_MS);
             Socket socket = askServer.accept();
 
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
             String peerIdentity = in.readLine();
 
             if (peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
@@ -253,6 +255,7 @@ public class Main {
                         String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey());
                         writer.println(accepted);
                         String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
+                        System.out.println("key: " + key);
                         saveSenderInfo(request.username, request.publicKey, key);
                     }
                 } catch (IOException ex) {
@@ -262,10 +265,11 @@ public class Main {
             in.close();
             socket.close();
             askServer.close();
-        } catch (ConnectException e) {
+        }catch(SocketTimeoutException e){
+            System.out.println("Timeout");
+        }catch (ConnectException e) {
             System.out.println("Connection refused: make /openSender");
         } catch (IOException ex) {
-
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -423,8 +427,7 @@ public class Main {
     protected void send_message(String userkey, String message) {
         ConnectionKey connectionKey = new ConnectionKey(userkey, null);
         // TODO: properly handel the END_MESSAGE
-        final String END_MESSAGE = ":END_OF_MESSAGE:\n"; 
-       
+        final String END_MESSAGE = ":END_OF_MESSAGE:\n";
 
         System.out.println("send_message: " + userkey);
         System.out.println("send_message: " + connectionKey);
@@ -527,11 +530,11 @@ public class Main {
 
                 if (senderReply.equals("REJECTED:")) {
                     System.out.println("request rejected");
-                    return;
+                } else {
+                    NewConnection newConnection = new NewConnection(senderReply, PREFIX_REPLY_INFORMATION);
+                    System.out.println("Reply: " + newConnection);
+                    saveSenderInfo(newConnection.username, newConnection.publicKey, stringKey);
                 }
-                NewConnection newConnection = new NewConnection(senderReply, PREFIX_REPLY_INFORMATION);
-                System.out.println("Reply: " + newConnection);
-                saveSenderInfo(newConnection.username, newConnection.publicKey, stringKey);
             }
         } catch (SocketTimeoutException ex) {
             System.err.println("Did not respond");
@@ -540,13 +543,14 @@ public class Main {
                 System.err.println("no route to host error caught");
             }
         } catch (IOException ex) {
+            System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        } finally {
             if (host != null) {
                 try {
                     host.close();
                 } catch (IOException ignore) {
                 }
             }
-            System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
     }
 
