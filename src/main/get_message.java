@@ -25,7 +25,7 @@ public class get_message implements Runnable {
 
     ConcurrentLinkedQueue<Message> message;
     
-    private final String END_MESSAGE = ":END_OF_MESSAGE:\n";
+    private final String END_MESSAGE = ":END_OF_MESSAGE:";
     private SenderInfo sender;
 
     private Socket socket;
@@ -52,6 +52,7 @@ public class get_message implements Runnable {
             System.out.println("Conntected client: " + sender.getUsername());
         }
         this.message = messages;
+        /* debug */System.out.println(sender.username);
     }
 
     @Override
@@ -65,7 +66,7 @@ public class get_message implements Runnable {
                     break;
                 }
                 
-                if(fmessage.equals(END_MESSAGE)){
+                if(encryptedMessage.equals(END_MESSAGE)){
                     String fullMessage = fmessage.toString();
                     this.message.add(new Message(this.sender,fullMessage.trim()));
                     fmessage.setLength(0);

@@ -236,10 +236,12 @@ public class Main {
         // TODO: do this properly so it doesn't wait for in.readline() too long
         System.out.println("waiting for Senders request...");
         System.out.println("Enter y or n: ");
+        ServerSocket askServer = null;
+        Socket socket = null;
         try {
-            ServerSocket askServer = new ServerSocket(portAsk);
+            askServer = new ServerSocket(portAsk);
             askServer.setSoTimeout((int) CONNECT_COOLDOWN_MS);
-            Socket socket = askServer.accept();
+            socket = askServer.accept();
 
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String peerIdentity = in.readLine();
@@ -262,15 +264,23 @@ public class Main {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            in.close();
-            socket.close();
-            askServer.close();
+            
         }catch(SocketTimeoutException e){
             System.out.println("Timeout");
         }catch (ConnectException e) {
             System.out.println("Connection refused: make /openSender");
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }finally{
+            try{
+                if(socket!=null){
+                    socket.close();
+                }
+                if(askServer!=null){
+                    askServer.close();
+                }
+            }catch(IOException e){
+            }
         }
     }
 
@@ -337,7 +347,7 @@ public class Main {
                         query.closeConnection();
 
                         // otherwise register and start handler
-                        clients.put(connectionKey.toString(), incoming);
+                        clients.putIfAbsent(connectionKey.toString(), incoming);
 
                         if (!debug) {
                             System.out.println("Accepted Request: (serverThread)" + getLocalIp());
@@ -427,9 +437,10 @@ public class Main {
     protected void send_message(String userkey, String message) {
         ConnectionKey connectionKey = new ConnectionKey(userkey, null);
         // TODO: properly handel the END_MESSAGE
-        final String END_MESSAGE = ":END_OF_MESSAGE:\n";
-
-        System.out.println("send_message: " + userkey);
+        final String END_MESSAGE = ":END_OF_MESSAGE:";
+        
+        message.replace("\n", "//n");
+        
         System.out.println("send_message: " + connectionKey);
 
         if (!clients.containsKey(connectionKey.toString())) {
@@ -506,6 +517,10 @@ public class Main {
      * @param stringKey
      */
     protected void getSenderInfo(String stringKey) {
+        // TODO:  fix: when new user is added, one end /newSender adds the user to 
+        // clients list faster than /openSender so newSender thinks they are connected, 
+        // rejects other connection request from /openSender. /openSender thinks they
+        // are not connected so there is only one way message between each other.
         ConnectionKey senderConnectionKey = new ConnectionKey(stringKey, null);
         int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1; // convention that the ask port will be +1 of the main server port
         System.out.println("getSenderInfo: " + senderConnectionKey);

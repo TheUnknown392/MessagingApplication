@@ -14,6 +14,7 @@ public class MessageManager implements Runnable{
     
     public MessageManager(ConcurrentLinkedQueue<Message> messages){
         this.messages = messages;
+        System.out.println("from constructor" + messages.size());
     }
     
     @Override
@@ -21,7 +22,10 @@ public class MessageManager implements Runnable{
         while(true){
             if(!messages.isEmpty()){
                 Message message = messages.poll();
-                System.out.println(message.getSenderInfo().username + ": " + message.getEncryptedMessage());
+                if(message == null){
+                    System.out.println("it's null");
+                }else{
+                System.out.println(message.getSenderInfo().username + ": " + message.getEncryptedMessage().replace("//n","\n"));}
             }
         }
     }
