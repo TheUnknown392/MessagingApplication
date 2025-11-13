@@ -11,10 +11,10 @@ package main;
 public class RequestInformation {
 //    PREFIX_REQUEST_INFORMATION + user.username + ":" + user.publicKey + ":" + getLocalIp() + ":" + this.port;
 
-    String username;
-    String publicKey;
-    String ip;
-    String port;
+    public String username;
+    public String publicKey;
+    public String ip;
+    public String port;
 
     public RequestInformation(String key, String PREFIX) {
         if (key != null && key.startsWith(PREFIX)) {

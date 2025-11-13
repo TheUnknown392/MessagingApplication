@@ -183,6 +183,7 @@ public class Main {
      * @return
      */
     private boolean falseConnection(ConnectionKey connectionKey) {
+        // TODO: sometimes, this shows false positive so some connection loops in connecting and disconnecting
         Query query = new Query(this.debug);
         if (!query.hasCommunication(user.getId(), connectionKey.md5)) {
             query.closeConnection();
@@ -198,33 +199,12 @@ public class Main {
      * @return IP
      */
     public String getLocalIp() {
-        Enumeration<NetworkInterface> nets = null;
-        try {
-            nets = NetworkInterface.getNetworkInterfaces();
-        } catch (SocketException ex) {
-            System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        try (final DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            return socket.getLocalAddress().getHostAddress().toString();
+        } catch (Exception e) {
         }
-
-        if (nets == null) {
-            return "127.0.0.1";
-        }
-
-        for (NetworkInterface netint : java.util.Collections.list(nets)) {
-
-            try {
-                if (netint.isUp() && !netint.isLoopback()) {
-                    Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
-                    for (InetAddress inetAddress : java.util.Collections.list(inetAddresses)) {
-                        if (inetAddress instanceof Inet4Address && !inetAddress.isLoopbackAddress()) {
-                            return inetAddress.getHostAddress();
-                        }
-                    }
-                }
-            } catch (SocketException ex) {
-                System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-            }
-        }
-        return "127.0.0.1"; // fallback
+        return "127.0.0.1";
     }
 
     /**
@@ -239,10 +219,11 @@ public class Main {
         ServerSocket askServer = null;
         Socket socket = null;
         try {
+            System.out.println("Server listening on: " + portAsk);
             askServer = new ServerSocket(portAsk);
             askServer.setSoTimeout((int) CONNECT_COOLDOWN_MS);
             socket = askServer.accept();
-
+            System.out.println("conntected to : " + socket.getInetAddress().getHostAddress());
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String peerIdentity = in.readLine();
 
@@ -264,22 +245,22 @@ public class Main {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            
-        }catch(SocketTimeoutException e){
+
+        } catch (SocketTimeoutException e) {
             System.out.println("Timeout");
-        }catch (ConnectException e) {
+        } catch (ConnectException e) {
             System.out.println("Connection refused: make /openSender");
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-        }finally{
-            try{
-                if(socket!=null){
+        } finally {
+            try {
+                if (socket != null) {
                     socket.close();
                 }
-                if(askServer!=null){
+                if (askServer != null) {
                     askServer.close();
                 }
-            }catch(IOException e){
+            } catch (IOException e) {
             }
         }
     }
@@ -438,9 +419,9 @@ public class Main {
         ConnectionKey connectionKey = new ConnectionKey(userkey, null);
         // TODO: properly handel the END_MESSAGE
         final String END_MESSAGE = ":END_OF_MESSAGE:";
-        
+
         message.replace("\n", "//n");
-        
+
         System.out.println("send_message: " + connectionKey);
 
         if (!clients.containsKey(connectionKey.toString())) {
@@ -498,6 +479,7 @@ public class Main {
             return;
         }
         String chosenKey = availableKeys.get(choice);
+        System.out.println("Going to getSenderInfo");
         getSenderInfo(chosenKey);
     }
 
@@ -527,7 +509,9 @@ public class Main {
         Socket host = null;
         try {
             host = new Socket();
+            System.out.println("Client connecting to: " + senderConnectionKey.ip + ":" + peerServerPort);
             host.connect(new InetSocketAddress(senderConnectionKey.ip, peerServerPort), (int) CONNECT_COOLDOWN_MS);
+            System.out.println(host.getInetAddress().getHostAddress());
             //TODO: not let users have ':' in their name
             //TODO: be more consistent with RequestInformation
             String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + getLocalIp() + ":" + this.port;
@@ -559,6 +543,7 @@ public class Main {
             }
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            System.out.println("io exception here: " + ex.getMessage());
         } finally {
             if (host != null) {
                 try {

@@ -14,7 +14,7 @@ public class MessageManager implements Runnable{
     
     public MessageManager(ConcurrentLinkedQueue<Message> messages){
         this.messages = messages;
-        System.out.println("from constructor" + messages.size());
+        System.out.println("from constructor " + messages.size());
     }
     
     @Override
