@@ -8,6 +8,7 @@ import database.*;
 import crypto.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import frontend.Ui;
 
 /**
  *
@@ -502,7 +503,7 @@ public class Main {
         // TODO:  fix: when new user is added, one end /newSender adds the user to 
         // clients list faster than /openSender so newSender thinks they are connected, 
         // rejects other connection request from /openSender. /openSender thinks they
-        // are not connected so there is only one way message between each other.
+        // are not connected so there is only one way message between each other. 
         ConnectionKey senderConnectionKey = new ConnectionKey(stringKey, null);
         int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1; // convention that the ask port will be +1 of the main server port
         System.out.println("getSenderInfo: " + senderConnectionKey);
@@ -555,11 +556,14 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
+        Ui gui = new Ui();
+
         Main messenger = new Main("255.255.255.255", 64444);
 
         Scanner scan = new Scanner(System.in);
 
         messenger.start();
+        // TODO: Ui gui = new Ui(Bridge bridge);?
         System.out.println("Enter your message: ");
         while (true) {
             String user_message = scan.nextLine();
@@ -573,18 +577,18 @@ public class Main {
                             i = parsed_message.length + 1;
                         } else {
                             System.out.println("Usage: /message /<username> <message>");
-                            i = parsed_message.length + 1; // exit out
+                            i = parsed_message.length + 1; 
                         }
                         break;
                     }
                     case "/newSender": {
                         messenger.connectNewSender();
-                        i = parsed_message.length + 1; // exit out
+                        i = parsed_message.length + 1; 
                         break;
                     }
                     case "/openSender": {
                         messenger.newSenderInPermission(scan);
-                        i = parsed_message.length + 1; // exit out
+                        i = parsed_message.length + 1;
                         break;
                     }
                     case "/exit": {
