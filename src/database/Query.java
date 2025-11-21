@@ -14,6 +14,8 @@ import java.util.logging.Logger;
 import crypto.*;
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -274,11 +276,12 @@ public class Query {
         sender = getSender(sender.getFingerpring());
 
         try {
-            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid) values(?,?);");
+            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username) values(?,?,?);");
             stmt.setInt(1, user.id);
             stmt.setInt(2, sender.getId());
+            stmt.setString(3, sender.username);
             if (!debug) {
-                System.out.println("INSERT INTO communication_participants(uid, sid) values(" + user.id + "," + sender.getId() + ");");
+                System.out.println("INSERT INTO communication_participants(uid, sid, username) values(" + user.id + "," + sender.getId() + "," +sender.username +");");
             }
 
             int effectedRow = stmt.executeUpdate();
@@ -367,5 +370,35 @@ public class Query {
             }
         }
         return false;
+    }
+    /**
+     * returns a list of contacts
+     * database.
+     *
+     * @param md5
+     * @return
+     */
+    public List<String> getContacts() {
+        List<String> contacts = null;
+        try {
+            contacts = new ArrayList<>();
+            stmt = conn.prepareStatement("SELECT username FROM communication_participants;");
+            ResultSet rs = stmt.executeQuery();
+
+            while(rs.next()) {
+                contacts.add(rs.getString("username"));
+            }
+            return contacts;
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return contacts;
     }
 }
