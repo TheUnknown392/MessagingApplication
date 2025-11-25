@@ -6,9 +6,11 @@ import java.util.*;
 import java.util.concurrent.*;
 import database.*;
 import crypto.*;
+import frontend.FrameUi;
+import frontend.LandingUi;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import frontend.Ui;
 
 /**
  *
@@ -48,7 +50,8 @@ public class Main {
 
     public void start() {
 
-        while (getCurrentUser());
+        while (!getCurrentUser());
+        FrameUi gui = new FrameUi();
         try {
             server();
         } catch (IOException ex) {
@@ -63,36 +66,9 @@ public class Main {
      * @return
      */
     private boolean getCurrentUser() {
-        Query query = new Query(this.debug);
-
-        Scanner scan = new Scanner(System.in);
-        System.out.println("Enter your username: ");
-
-        String username = scan.nextLine();
-
-        user = query.getUser(username);
-
-        if (user == null) {
-            System.out.println("New user detected: ");
-            System.out.println("Input your new password and don't forget it: ");
-
-            String password = scan.nextLine();
-
-            user = query.createUser(username, password);
-
-            if ((this.user = query.saveNewUser(user)) == null) {
-                System.exit(1);
-            }
-            query.closeConnection();
-            return false;
-        }
-        query.closeConnection();
-
-        System.out.println("Input your password: ");
-        String password = scan.nextLine();
-
-        boolean verification = new CryptoPassword(this.debug).verifyPassword(user, password);
-        return verification;
+        LandingUi landingUi = new LandingUi(null);
+        this.user = landingUi.showDialog();
+        return this.user != null;
     }
 
     /**
@@ -556,14 +532,13 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        Ui gui = new Ui();
 
         Main messenger = new Main("255.255.255.255", 64444);
 
         Scanner scan = new Scanner(System.in);
 
         messenger.start();
-        // TODO: Ui gui = new Ui(Bridge bridge);?
+        // TODO: FrameUi gui = new FrameUi(Bridge bridge);?
         System.out.println("Enter your message: ");
         while (true) {
             String user_message = scan.nextLine();
