@@ -51,7 +51,7 @@ public class Main {
     public void start() {
 
         while (!getCurrentUser());
-        FrameUi gui = new FrameUi();
+        FrameUi gui = new FrameUi(this.user);
         try {
             server();
         } catch (IOException ex) {

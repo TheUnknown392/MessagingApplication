@@ -41,7 +41,7 @@ public class CryptoPassword {
             PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, AES_LEN);
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
             byte[] testHash = skf.generateSecret(spec).getEncoded();
-            return !Arrays.equals(expectedHash, testHash);
+            return Arrays.equals(expectedHash, testHash);
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(CryptoPassword.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InvalidKeySpecException ex) {

@@ -18,6 +18,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import database.Query;
+import database.UserInfo;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +27,7 @@ import java.util.List;
  * @author theunknown
  */
 public class ChatUi {
-    
+    UserInfo user;
     private Query query = new Query(false);
 
     protected JTextArea showMessage = null;
@@ -45,7 +46,11 @@ public class ChatUi {
     protected DefaultListModel<String> contactListModel = null;
     protected JList<String> contactList = null;
 
-    public ChatUi() {
+    public ChatUi(UserInfo user) {
+        assert user!=null;
+        
+        this.user = user;
+        
         messageField = new JTextField();
 
         sendMessage = new JButton("Send");
@@ -83,7 +88,7 @@ public class ChatUi {
     }
     
     protected void loadContacts(){
-        List<String> contacts = new ArrayList<>(this.query.getContacts());
+        List<String> contacts = new ArrayList<>(this.query.getContacts(this.user));
         contacts.forEach((e)->{
             contactListModel.addElement(e);
         });

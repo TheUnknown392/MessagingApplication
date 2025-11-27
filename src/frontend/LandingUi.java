@@ -19,6 +19,7 @@ import crypto.CryptoPassword;
 import database.UserInfo;
 import database.Query;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -85,7 +86,12 @@ public class LandingUi extends JDialog {
             String message = e.getActionCommand();
             switch (message) {
                 case "Submit":
-                    submitHandle();
+                    boolean verified = submitHandle();
+                        if(!verified){
+                            JOptionPane.showMessageDialog(rootPane, "Incorrect password or username.", "Try Again!", JOptionPane.ERROR_MESSAGE);
+                        }else{
+                            dispose();
+                        }
                     break;
                 case "Database":
                     // TODO: make database information inputted by user, somehow and save it for future use in some file;
@@ -97,7 +103,7 @@ public class LandingUi extends JDialog {
 
     }
 
-    public void submitHandle() {
+    public boolean submitHandle() {
         // TODO: remove necessary debug parameter in constructor
         String username = this.username.getText();
         System.out.println(username);
@@ -122,12 +128,8 @@ public class LandingUi extends JDialog {
         System.out.println(user.username);
         boolean verification = new CryptoPassword(false).verifyPassword(user, password);
         System.out.println(verification);
-        if(!verification){
-            this.result = user;
-        }else{
-            this.result = null;
-        }
-        dispose();
+        this.result = user;
+        return verification;
     }
 
     public UserInfo showDialog() {
@@ -136,3 +138,4 @@ public class LandingUi extends JDialog {
     }
 }
 // TODO: message notification
+// TODO: get conversation list of selected user only and not other users

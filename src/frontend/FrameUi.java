@@ -4,6 +4,7 @@
  */
 package frontend;
 
+import database.UserInfo;
 import javax.swing.JFrame;
 import java.awt.BorderLayout;
 
@@ -22,14 +23,14 @@ public class FrameUi {
     JFrame frame = null;
 
     
-    public FrameUi(){
+    public FrameUi(UserInfo user){
         
         frame = new JFrame("Encrypted Messaging Application");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
         frame.setSize(x, y);
         
-        ChatUi chatUi = new ChatUi();
+        ChatUi chatUi = new ChatUi(user);
         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);

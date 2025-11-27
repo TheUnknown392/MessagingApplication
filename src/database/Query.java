@@ -378,11 +378,12 @@ public class Query {
      * @param md5
      * @return
      */
-    public List<String> getContacts() {
+    public List<String> getContacts(UserInfo user) {
         List<String> contacts = null;
         try {
             contacts = new ArrayList<>();
-            stmt = conn.prepareStatement("SELECT username FROM communication_participants;");
+            stmt = conn.prepareStatement("SELECT username FROM communication_participants where uid = ?;");
+            stmt.setInt(1, user.id);
             ResultSet rs = stmt.executeQuery();
 
             while(rs.next()) {

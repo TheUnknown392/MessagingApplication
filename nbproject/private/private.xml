@@ -11,12 +11,16 @@
             <file>file:/home/theunknown/git/MessagingApplication/src/database/UserInfo.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/database/SenderInfo.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/database/Query.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/Ui.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/FrameUi.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/.gitignore</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoMessage.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/frontend/Bridge.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoRSA.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/nbproject/project.properties</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/DatabaseInfo.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/LandingUi.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/ChatUi.java</file>
         </group>
     </open-files>
 </project-private>

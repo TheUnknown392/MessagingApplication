@@ -11,4 +11,7 @@ Dealing with message->GUI, message->database, Sender seperation:
 Dealing with loading messages into swing:
     1. Swing will have an always active Connection to the database to query different messages.
 
+Dealing with intergration of frontend and backend:
+    1. Creating some kind of class to send important data by argument instead of importing global variables directly?
+
 TODO: pagination to deal with paging the messages of each private chats
