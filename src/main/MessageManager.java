@@ -4,16 +4,15 @@
  */
 package main;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import static main.Main.messages;
 /**
  *
  * @author theunknown
  */
 public class MessageManager implements Runnable{
-    private ConcurrentLinkedQueue<Message> messages;
+//    private ConcurrentLinkedQueue<Message> messages;
     
-    public MessageManager(ConcurrentLinkedQueue<Message> messages){
-        this.messages = messages;
+    public MessageManager(){
         System.out.println("from constructor " + messages.size());
     }
     

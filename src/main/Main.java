@@ -50,14 +50,14 @@ public class Main {
 
     public void start() {
 
-        while (!getCurrentUser());
+        getCurrentUser();
         FrameUi gui = new FrameUi(this.user);
         try {
             server();
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
-        new Thread(new MessageManager(this.messages)).start();
+        new Thread(new MessageManager()).start();
     }
 
     /**
@@ -65,10 +65,12 @@ public class Main {
      *
      * @return
      */
-    private boolean getCurrentUser() {
+    private void getCurrentUser() {
         LandingUi landingUi = new LandingUi(null);
         this.user = landingUi.showDialog();
-        return this.user != null;
+        if(this.user == null){
+            System.exit(0);
+        }
     }
 
     /**
@@ -134,7 +136,7 @@ public class Main {
                     query.closeConnection();
 
                     // listen to message from the thread
-                    new Thread(new get_message(host, sender, messages, this.debug)).start();
+                    new Thread(new get_message(host, sender, this.debug)).start();
 
                 }
             } catch (NoRouteToHostException e) {
@@ -311,7 +313,7 @@ public class Main {
                             System.out.println("Accepted Request: (serverThread)" + getLocalIp());
                             System.out.println("Added Key (ServerThread): " + connectionKey);
                         }
-                        new Thread(new get_message(incoming, sender, this.messages, this.debug)).start();
+                        new Thread(new get_message(incoming, sender, this.debug)).start();
                     }
 
                 } catch (IOException e) {

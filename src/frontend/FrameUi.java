@@ -31,10 +31,11 @@ public class FrameUi {
         frame.setSize(x, y);
         
         ChatUi chatUi = new ChatUi(user);
+        StatusUi statusUi = new StatusUi();
         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);
-        frame.add(chatUi.statusPanel, BorderLayout.SOUTH);
+        frame.add(statusUi.statusPanel, BorderLayout.SOUTH);
         
         
         frame.setVisible(true);

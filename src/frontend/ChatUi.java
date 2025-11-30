@@ -37,7 +37,6 @@ public class ChatUi {
     protected JScrollPane messageScroll = null;
     
     protected JPanel inputPanel = null;
-    protected JPanel statusPanel = null;
     
     protected JButton sendMessage = null;
     
@@ -56,7 +55,7 @@ public class ChatUi {
         sendMessage = new JButton("Send");
         showMessage = new JTextArea();
         inputPanel = new JPanel(new BorderLayout());
-        statusPanel = new JPanel(new BorderLayout());
+        
         contactListModel = new DefaultListModel<>();
         contactList = new JList(contactListModel);
         contactScroll = new JScrollPane(contactList);
@@ -77,8 +76,6 @@ public class ChatUi {
         messagePanel.add(messageScroll, BorderLayout.CENTER);
         messagePanel.add(new JLabel("Message"), BorderLayout.NORTH);
         messagePanel.add(inputPanel, BorderLayout.SOUTH);
-        
-        statusPanel.add(new JLabel("status"), BorderLayout.EAST);
 
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         splitPane.setDividerLocation(150);

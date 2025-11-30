@@ -28,7 +28,6 @@ import javax.swing.JOptionPane;
 public class LandingUi extends JDialog {
 
     private UserInfo result = null;
-    
 
     private JTextField username;
     private JPasswordField password;
@@ -37,7 +36,7 @@ public class LandingUi extends JDialog {
 
     public LandingUi(JFrame parent) {
         super(parent, "Encrypted Messaging Application", true);
-
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         int x = 450;
         int y = 350;
         setSize(x, y);
@@ -87,11 +86,11 @@ public class LandingUi extends JDialog {
             switch (message) {
                 case "Submit":
                     boolean verified = submitHandle();
-                        if(!verified){
-                            JOptionPane.showMessageDialog(rootPane, "Incorrect password or username.", "Try Again!", JOptionPane.ERROR_MESSAGE);
-                        }else{
-                            dispose();
-                        }
+                    if (!verified) {
+                        JOptionPane.showMessageDialog(rootPane, "Could not log in", "Try Again!", JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        dispose();
+                    }
                     break;
                 case "Database":
                     // TODO: make database information inputted by user, somehow and save it for future use in some file;
@@ -109,14 +108,24 @@ public class LandingUi extends JDialog {
         System.out.println(username);
         String password = new String(this.password.getPassword());
         System.out.println(password);
+        
+        if(!(cleanUsername(username) && cleanPassword(password))){
+            JOptionPane.showConfirmDialog(this, "username cannot have ':', ' ' character(s) and it cannot be empty", "Dirty input.", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
 
         Query query = new Query(false);
         UserInfo user = query.getUser(username);
 
         if (user == null) {
-            System.out.println("New user detected: ");
-            System.out.println("Input your new password and don't forget it: ");
-
+            int choice = JOptionPane.showConfirmDialog(this, "Do you want to create new user ? Don't forget the password.", "Unknown User", JOptionPane.WARNING_MESSAGE);
+            
+            if (choice != JOptionPane.YES_OPTION) {
+                this.username.setText("");
+                this.password.setText("");
+                return false;
+            }
+            
             user = query.createUser(username, password);
 
             if ((user = query.saveNewUser(user)) == null) {
@@ -125,9 +134,10 @@ public class LandingUi extends JDialog {
             query.closeConnection();
         }
         query.closeConnection();
-        System.out.println(user.username);
+        // System.out.println(user.username);
         boolean verification = new CryptoPassword(false).verifyPassword(user, password);
         System.out.println(verification);
+        assert user != null;
         this.result = user;
         return verification;
     }
@@ -136,6 +146,15 @@ public class LandingUi extends JDialog {
         setVisible(true);
         return result;
     }
+    
+    private boolean cleanUsername(String username){
+        return !(username.contains(":") || username.contains(" ") || username.equals(""));
+    }
+    
+    private boolean cleanPassword(String password){
+        return !username.equals("");
+    }
+    
 }
 // TODO: message notification
 // TODO: get conversation list of selected user only and not other users

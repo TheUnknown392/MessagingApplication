@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import static main.Main.EXIT;
 import static main.Main.clients;
+import static main.Main.messages;
 import database.SenderInfo;
 
 /**
@@ -22,8 +22,6 @@ import database.SenderInfo;
  * handles clients incomming messages and sends connection requests to clients
  */
 public class get_message implements Runnable {
-
-    ConcurrentLinkedQueue<Message> message;
     
     private final String END_MESSAGE = ":END_OF_MESSAGE:";
     private SenderInfo sender;
@@ -34,7 +32,7 @@ public class get_message implements Runnable {
 
     boolean debug;
 
-    public get_message(Socket socket, SenderInfo sender, ConcurrentLinkedQueue<Message> messages, boolean debug) {
+    public get_message(Socket socket, SenderInfo sender, boolean debug) {
         this.debug = debug;
         if (this.debug) {
             System.out.println("ready to recieved message from: (clientHandler): " + sender.getFingerpring() + ":" + socket.getInetAddress().toString().substring(1));
@@ -51,7 +49,6 @@ public class get_message implements Runnable {
         if (debug) {
             System.out.println("Conntected client: " + sender.getUsername());
         }
-        this.message = messages;
         /* debug */System.out.println(sender.username);
     }
 
@@ -68,7 +65,7 @@ public class get_message implements Runnable {
                 
                 if(encryptedMessage.equals(END_MESSAGE)){
                     String fullMessage = fmessage.toString();
-                    this.message.add(new Message(this.sender,fullMessage.trim()));
+                    messages.add(new Message(this.sender,fullMessage.trim()));
                     fmessage.setLength(0);
                     continue;
                 }
