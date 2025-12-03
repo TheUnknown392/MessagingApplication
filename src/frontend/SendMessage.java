@@ -17,8 +17,8 @@ import static main.Main.clients;
  */
 public class SendMessage {
 
-    public static boolean sendMessage(String userkey, String message) {
-        ConnectionKey connectionKey = new ConnectionKey(userkey, null);
+    public static boolean sendMessage(String md5, String message) {
+        ConnectionKey connectionKey = new ConnectionKey(md5);
         // TODO: properly handel the END_MESSAGE
         final String END_MESSAGE = ":END_OF_MESSAGE:";
 
@@ -26,12 +26,12 @@ public class SendMessage {
 
         System.out.println("send_message: " + connectionKey);
 
-        if (!clients.containsKey(connectionKey.toString())) {
+        if (!clients.containsKey(connectionKey.md5)) {
             System.err.println("User does not exist");
             return true;
         }
 
-        Socket activeSocket = clients.get(connectionKey.toString());
+        Socket activeSocket = clients.get(connectionKey.md5);
 
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);

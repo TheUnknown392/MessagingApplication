@@ -85,16 +85,16 @@ public class Main {
             return;
         }
         // ignore if Senders are not known
-        if (unknownConnection.containsKey(connectionKey.toString())) {
+        if (unknownConnection.containsKey(connectionKey.md5)) {
             return;
         }
         // ignore if already connected
-        if (clients.containsKey(connectionKey.toString())) {
+        if (clients.containsKey(connectionKey.md5)) {
             return;
         }
         // ignore if not in our database
         if (falseConnection(connectionKey)) {
-            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
+            unknownConnection.putIfAbsent(connectionKey.md5, System.currentTimeMillis());
             if (debug) {
                 unknownConnection.forEach((key, value) -> {
                     System.out.println(key);
@@ -102,7 +102,10 @@ public class Main {
             }
             return;
         }
-
+        
+        if(connectionKey.port.equals("") || connectionKey.port == null){
+            System.out.println("it's null sendConnectionRequest()");
+        }
         int peerServerPort = Integer.parseInt(connectionKey.port);
 
         if (debug) {
@@ -126,7 +129,7 @@ public class Main {
 
                 if (host.isConnected()) {
 
-                    clients.putIfAbsent(connectionKey.toString(), host);
+                    clients.putIfAbsent(connectionKey.md5, host);
                     if (debug) {
                         System.out.println("Addded key (sendConnectionRequest): " + connectionKey);
                     }
@@ -283,7 +286,7 @@ public class Main {
                         }
 
                         // if already connected, close duplicate incoming connection
-                        if (clients.containsKey(connectionKey.toString())) {
+                        if (clients.containsKey(connectionKey.md5)) {
                             if (debug) {
                                 System.out.println("Duplicate incoming connection for " + connectionKey + ", closing");
                             }
@@ -293,7 +296,7 @@ public class Main {
                         // allow connection with known user only
                         if (falseConnection(connectionKey)) {
                             System.out.println("connection closed for (server): " + peerIdentity);
-                            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
+                            unknownConnection.putIfAbsent(connectionKey.md5, System.currentTimeMillis());
                             incoming.close();
                             continue;
                         }
@@ -307,7 +310,7 @@ public class Main {
                         query.closeConnection();
 
                         // otherwise register and start handler
-                        clients.putIfAbsent(connectionKey.toString(), incoming);
+                        clients.putIfAbsent(connectionKey.md5, incoming);
 
                         if (!debug) {
                             System.out.println("Accepted Request: (serverThread)" + getLocalIp());
@@ -457,9 +460,14 @@ public class Main {
             System.out.println("Invalid choice.");
             return;
         }
-        String chosenKey = availableKeys.get(choice);
-        System.out.println("Going to getSenderInfo");
-        getSenderInfo(chosenKey);
+        String chosenKey;
+        try{
+            chosenKey = availableKeys.get(choice);
+            System.out.println("Going to getSenderInfo");
+            getSenderInfo(chosenKey);
+        }catch(IndexOutOfBoundsException e){
+            
+        }
     }
 
     private void saveSenderInfo(String username, String publicKey, String stringKey) {

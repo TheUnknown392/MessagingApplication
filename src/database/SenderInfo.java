@@ -21,7 +21,7 @@ public class SenderInfo {
     private byte[] PublicKey;
     private String md5;
     private byte[] encrypted_aes_key;
-
+    
     public int getId() {
         return this.id;
     }
@@ -33,6 +33,10 @@ public class SenderInfo {
         CryptoRSA crypt = new CryptoRSA();
         this.md5 = crypt.md5Fingerprint(this.PublicKey);
         return false;
+    }
+    
+    public void setFingerprint(String fingerprint){
+        this.md5 = fingerprint;
     }
 
     public String getFingerpring() {

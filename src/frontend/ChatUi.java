@@ -28,6 +28,7 @@ import javax.swing.JFrame;
 import javax.swing.ListSelectionModel;
 
 
+
 /**
  *
  * @author theunknown
@@ -110,7 +111,8 @@ public class ChatUi {
                         System.out.println("it's null getSelectedSender()");
                         return;
                     }
-                    
+
+                    SendMessage.sendMessage(getSelectedSender().getFingerpring(), unsafeMessage);
                 }break;
                 default:{
                     System.err.println("unreachable in ChatUi onClick");

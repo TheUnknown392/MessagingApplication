@@ -289,6 +289,7 @@ public class Query {
                 String public_key = new CryptoRSA().bytePublicKeyToString(rs.getBytes("public_key"));
                 sender = new SenderInfo(username, public_key);
                 sender.setId(sid);
+                sender.setFingerprint(rs.getString("fingerprint"));
             } else {
                 System.err.println("unable to get info of sender (getSender)"); // TODO: remove the invalid user from database
             }

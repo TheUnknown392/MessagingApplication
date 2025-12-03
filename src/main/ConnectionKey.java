@@ -9,9 +9,15 @@ package main;
  * @author theunknown
  */
 public class ConnectionKey {
-    String md5;
+    public String md5;
     String ip;
     String port;
+    
+    public ConnectionKey(String md5){
+        this.md5 = md5;
+        this.ip = "";
+        this.port = "";
+    }
 
     public ConnectionKey(String md5, String ip, String port) {
         this.md5 = md5;
