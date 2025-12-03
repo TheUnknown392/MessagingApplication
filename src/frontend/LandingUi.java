@@ -76,6 +76,8 @@ public class LandingUi extends JDialog {
         add(new JPanel(), BorderLayout.NORTH);
         add(form, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
+        
+        this.getRootPane().setDefaultButton(submitButton);
     }
 
     private class onClick implements ActionListener {

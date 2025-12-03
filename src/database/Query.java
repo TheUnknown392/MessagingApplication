@@ -17,6 +17,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import main.Message;
 
 /**
  *
@@ -161,13 +162,13 @@ public class Query {
                 System.out.println("user not added");
                 return null;
             }
-            
+
             stmt = conn.prepareStatement("SELECT uid from users where username = ? AND public_key = ?");
             stmt.setString(1, user.username);
             stmt.setBytes(2, user.getPublicKey());
-            
+
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 user.id = rs.getInt("uid");
             }
         } catch (SQLException ex) {
@@ -235,6 +236,12 @@ public class Query {
         return false;
     }
 
+    /**
+     * gets sender from the fingerprint
+     *
+     * @param md5
+     * @return
+     */
     public SenderInfo getSender(String md5) {
         SenderInfo sender = null;
         try {
@@ -264,6 +271,40 @@ public class Query {
         return sender;
     }
 
+    /**
+     * gets sender from sid
+     *
+     * @param md5
+     * @return
+     */
+    public SenderInfo getSender(int sid) {
+        SenderInfo sender = null;
+        try {
+            stmt = conn.prepareStatement("SELECT * from senders where sid = ?");
+            stmt.setInt(1, sid);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String username = rs.getString("username");
+                String public_key = new CryptoRSA().bytePublicKeyToString(rs.getBytes("public_key"));
+                sender = new SenderInfo(username, public_key);
+                sender.setId(sid);
+            } else {
+                System.err.println("unable to get info of sender (getSender)"); // TODO: remove the invalid user from database
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return sender;
+    }
+
     public boolean newConversation(UserInfo user, SenderInfo sender) {
         // TODO: have the aes key in conversation_participants
 
@@ -272,7 +313,7 @@ public class Query {
                 System.err.println("failed to save new sender (newConversation)");
             }
         }
-        
+
         sender = getSender(sender.getFingerpring());
 
         try {
@@ -281,7 +322,7 @@ public class Query {
             stmt.setInt(2, sender.getId());
             stmt.setString(3, sender.username);
             if (!debug) {
-                System.out.println("INSERT INTO communication_participants(uid, sid, username) values(" + user.id + "," + sender.getId() + "," +sender.username +");");
+                System.out.println("INSERT INTO communication_participants(uid, sid, username) values(" + user.id + "," + sender.getId() + "," + sender.username + ");");
             }
 
             int effectedRow = stmt.executeUpdate();
@@ -308,6 +349,7 @@ public class Query {
         try {
             stmt = conn.prepareStatement("SELECT COUNT(*) AS count\n"
                     + "FROM senders where fingerprint = ?\n");
+//            System.out.println("from hasSender");
             stmt.setString(1, md5);
             ResultSet rs = stmt.executeQuery();
 
@@ -346,6 +388,7 @@ public class Query {
                     + "FROM communication_participants cp\n"
                     + "JOIN senders s ON cp.sid = s.sid\n"
                     + "WHERE cp.uid = ? AND s.fingerprint = ?;");
+//            System.out.println("from hasCommunication");
             stmt.setInt(1, uid);
             stmt.setString(2, senderMd5);
             ResultSet rs = stmt.executeQuery();
@@ -371,24 +414,26 @@ public class Query {
         }
         return false;
     }
+
     /**
-     * returns a list of contacts
-     * database.
+     * returns a list of contacts database.
      *
      * @param md5
      * @return
      */
-    public List<String> getContacts(UserInfo user) {
-        List<String> contacts = null;
+    public List<SenderInfo> getContacts(UserInfo user) {
+        List<SenderInfo> contacts = null;
         try {
             contacts = new ArrayList<>();
-            stmt = conn.prepareStatement("SELECT username FROM communication_participants where uid = ?;");
+            stmt = conn.prepareStatement("SELECT sid FROM communication_participants where uid = ?;");
+//            System.out.println("from getContacts");
             stmt.setInt(1, user.id);
             ResultSet rs = stmt.executeQuery();
-
-            while(rs.next()) {
-                contacts.add(rs.getString("username"));
+            Query temp = new Query(false);
+            while (rs.next()) {
+                contacts.add(temp.getSender(rs.getInt("sid")));
             }
+            temp.closeConnection();
             return contacts;
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
@@ -401,5 +446,41 @@ public class Query {
             }
         }
         return contacts;
+    }
+
+    public boolean saveIncommingEncryptedMessage(Message messageInfo, UserInfo user) {
+        SenderInfo sender = messageInfo.getSenderInfo();
+        String message = messageInfo.getEncryptedMessage();
+        try {
+            stmt = conn.prepareStatement("INSERT INTO cypher_messages(sender, uid, sid, ciphertext,iv,read_state) VALUES"
+                                       + "(1, ?, ?, ?, ?, 0)"); // TODO: handle read_state.
+            stmt.setInt(1, user.getId());
+            stmt.setInt(2, sender.getId());
+            stmt.setBytes(3, message.getBytes());
+            
+            // TODO: get proper iv
+            SecureRandom random = new SecureRandom();
+            byte[] randomBytes = new byte[20];
+            random.nextBytes(randomBytes);
+            
+            stmt.setBytes(4, randomBytes);
+            
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows != 1) {
+                System.err.println("Error storing messages. effected rows: " + affectedRows);
+            }
+            return false;
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return true;
     }
 }

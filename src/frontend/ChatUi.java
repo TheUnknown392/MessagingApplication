@@ -18,10 +18,15 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import database.Query;
+import database.SenderInfo;
 import database.UserInfo;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
+import javax.swing.ListSelectionModel;
+
 
 /**
  *
@@ -43,8 +48,8 @@ public class ChatUi {
     
     protected JSplitPane splitPane = null;
     
-    protected DefaultListModel<String> contactListModel = null;
-    protected JList<String> contactList = null;
+    protected DefaultListModel<SenderInfo> contactListModel = null;
+    protected JList<SenderInfo> contactList = null;
 
     public ChatUi(UserInfo user, JFrame parentFrame){
         assert user!=null;
@@ -54,6 +59,7 @@ public class ChatUi {
         messageField = new JTextField();
 
         sendMessage = new JButton("Send");
+        sendMessage.setActionCommand("Send_Message");
         showMessage = new JTextArea();
         inputPanel = new JPanel(new BorderLayout());
         
@@ -82,16 +88,46 @@ public class ChatUi {
         splitPane.setDividerLocation(150);
         splitPane.setLeftComponent(contactPanel);
         splitPane.setRightComponent(messagePanel);
+        
+        contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        sendMessage.addActionListener(new onClick());
+        
         loadContacts();
     }
     
+    private class onClick implements ActionListener{
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String action = e.getActionCommand();
+            switch(action){
+                case "Send_Message":{
+                    String unsafeMessage = messageField.getText().trim();
+                    System.out.println(unsafeMessage);
+                    if(unsafeMessage.equals("")){
+                       return; 
+                    }
+                    if(getSelectedSender()==null){
+                        System.out.println("it's null getSelectedSender()");
+                        return;
+                    }
+                    
+                }break;
+                default:{
+                    System.err.println("unreachable in ChatUi onClick");
+                }
+            }
+        }
+    }
+    
     protected void loadContacts(){
-        List<String> contacts = new ArrayList<>(this.query.getContacts(this.user));
+        List<SenderInfo> contacts = new ArrayList<>(this.query.getContacts(this.user));
         contacts.forEach((e)->{
             contactListModel.addElement(e);
         });
+        contactList.setSelectedIndex(0);
     }
-    protected void selectContact(){
-
+    
+    public SenderInfo getSelectedSender(){
+        return contactList.getSelectedValue();
     }
 }

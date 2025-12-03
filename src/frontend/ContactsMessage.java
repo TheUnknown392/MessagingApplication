@@ -4,10 +4,15 @@
  */
 package frontend;
 
+import database.SenderInfo;
+import java.util.LinkedList;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  *
  * @author theunknown
  */
-public class Bridge {
-    
+public class ContactsMessage {
+    // TODO: 
+    ConcurrentHashMap<SenderInfo, LinkedList<String>> contactMessages = new ConcurrentHashMap<>();
 }

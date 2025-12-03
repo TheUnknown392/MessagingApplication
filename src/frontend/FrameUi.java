@@ -38,9 +38,10 @@ public class FrameUi {
         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);
+        frame.getRootPane().setDefaultButton(chatUi.sendMessage);
         frame.add(statusUi.statusPanel, BorderLayout.SOUTH);
-        
-        new Thread(new MessageManager(this)).start();
+        assert user != null;
+        new Thread(new MessageManager(this, user)).start();
         
         frame.setVisible(true);
         

@@ -29,14 +29,14 @@ public class Main {
     protected static Boolean EXIT = false;
 
     // String Key = md5 + ":" + peerIp +":"+ peerPort;
-    protected static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<String,Socket>();
 
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
     public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
 
-    private UserInfo user = null;
+    public UserInfo user = null;
 
     private String Broadcast_id;
     private int udp_port;

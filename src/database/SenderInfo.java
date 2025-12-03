@@ -70,4 +70,9 @@ public class SenderInfo {
     public void setId(int sid){
         this.id = sid;
     }
+    
+    @Override
+    public String toString(){
+        return this.username;
+    }
 }
