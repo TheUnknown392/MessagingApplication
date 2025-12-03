@@ -1,5 +1,6 @@
 package main;
 
+import frontend.MessageManager;
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -32,7 +33,7 @@ public class Main {
 
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
-    protected static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
+    public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
 
     private UserInfo user = null;
@@ -57,7 +58,6 @@ public class Main {
         } catch (IOException ex) {
             System.getLogger(Main.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
-        new Thread(new MessageManager()).start();
     }
 
     /**
@@ -491,7 +491,7 @@ public class Main {
             System.out.println("Client connecting to: " + senderConnectionKey.ip + ":" + peerServerPort);
             host.connect(new InetSocketAddress(senderConnectionKey.ip, peerServerPort), (int) CONNECT_COOLDOWN_MS);
             System.out.println(host.getInetAddress().getHostAddress());
-            //TODO: not let users have ':' in their name
+            
             //TODO: be more consistent with RequestInformation
             String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + getLocalIp() + ":" + this.port;
 

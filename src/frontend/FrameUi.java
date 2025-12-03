@@ -7,6 +7,7 @@ package frontend;
 import database.UserInfo;
 import javax.swing.JFrame;
 import java.awt.BorderLayout;
+import javax.swing.SwingUtilities;
 
 import main.*;
 
@@ -21,6 +22,8 @@ public class FrameUi {
     protected static final int y = 600;
     
     JFrame frame = null;
+    protected ChatUi chatUi;
+    protected StatusUi statusUi;
 
     
     public FrameUi(UserInfo user){
@@ -30,13 +33,14 @@ public class FrameUi {
         frame.setLayout(new BorderLayout());
         frame.setSize(x, y);
         
-        ChatUi chatUi = new ChatUi(user);
-        StatusUi statusUi = new StatusUi();
+        chatUi = new ChatUi(user, frame);
+        statusUi = new StatusUi();
         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);
         frame.add(statusUi.statusPanel, BorderLayout.SOUTH);
         
+        new Thread(new MessageManager(this)).start();
         
         frame.setVisible(true);
         

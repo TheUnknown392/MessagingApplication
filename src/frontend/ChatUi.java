@@ -21,6 +21,7 @@ import database.Query;
 import database.UserInfo;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.JFrame;
 
 /**
  *
@@ -45,7 +46,7 @@ public class ChatUi {
     protected DefaultListModel<String> contactListModel = null;
     protected JList<String> contactList = null;
 
-    public ChatUi(UserInfo user) {
+    public ChatUi(UserInfo user, JFrame parentFrame){
         assert user!=null;
         
         this.user = user;
@@ -89,5 +90,8 @@ public class ChatUi {
         contacts.forEach((e)->{
             contactListModel.addElement(e);
         });
+    }
+    protected void selectContact(){
+
     }
 }
