@@ -1,3 +1,4 @@
+*.sh
 transfer.sh
 test.java
 test/**

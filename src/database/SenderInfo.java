@@ -20,7 +20,7 @@ public class SenderInfo {
 
     private byte[] PublicKey;
     private String md5;
-    private byte[] encrypted_aes_key;
+    private byte[] aes_key;
     
     public int getId() {
         return this.id;
@@ -57,11 +57,11 @@ public class SenderInfo {
     }
 
     public byte[] getEncryptedAES() {
-        return this.encrypted_aes_key;
+        return this.aes_key;
     }
 
     public void setEncryptedAES(byte[] encrypted_aes) {
-        this.encrypted_aes_key = encrypted_aes;
+        this.aes_key = encrypted_aes;
     }
 
     public byte[] getPublicKey() {

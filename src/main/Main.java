@@ -35,7 +35,8 @@ public class Main {
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
     public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
-
+    
+    FrameUi gui = null;
     public UserInfo user = null;
 
     private String Broadcast_id;
@@ -52,7 +53,7 @@ public class Main {
     public void start() {
 
         getCurrentUser();
-        FrameUi gui = new FrameUi(this.user);
+        this.gui = new FrameUi(this.user);
         try {
             server();
         } catch (IOException ex) {
@@ -79,13 +80,15 @@ public class Main {
      * @param received
      */
     private void sendConnectionRequest(String received) { // client side socket
+        System.out.println("send Connection Request: "+ received);;
         ConnectionKey connectionKey = new ConnectionKey(received, PREFIX_CONNECT);
+        System.out.println("connectionKey: " + connectionKey);
         // ignore if invalid data
         if (connectionKey.ip == null) {
             return;
         }
         // ignore if Senders are not known
-        if (unknownConnection.containsKey(connectionKey.md5)) {
+        if (unknownConnection.containsKey(connectionKey)) {
             return;
         }
         // ignore if already connected
@@ -94,7 +97,7 @@ public class Main {
         }
         // ignore if not in our database
         if (falseConnection(connectionKey)) {
-            unknownConnection.putIfAbsent(connectionKey.md5, System.currentTimeMillis());
+            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
             if (debug) {
                 unknownConnection.forEach((key, value) -> {
                     System.out.println(key);
@@ -174,6 +177,7 @@ public class Main {
         query.closeConnection();
         return false;
     }
+    
 
     /**
      * gets local IP
@@ -211,17 +215,20 @@ public class Main {
 
             if (peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
                 RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
-                System.out.println("Request by: " + request.username); // TODO: some abstraction/polymorphism?
+                System.out.println("Request by: " + request); // TODO: some abstraction/polymorphism?
                 try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
                     String choice = scan.nextLine().toLowerCase();
                     if (!(choice.equals("y") || choice.equals("yes"))) {
                         writer.println("REJECTED:");
                     } else {
-                        String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey());
-                        writer.println(accepted);
                         String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
                         System.out.println("key: " + key);
-                        saveSenderInfo(request.username, request.publicKey, key);
+                        ConnectionKey unknownClient = new ConnectionKey(key,PREFIX_CONNECT);
+                        System.out.println("AES: " + request.AES);
+                        byte[] aes_sender = Base64.getDecoder().decode(request.AES);
+                        String aes_user = saveSenderInfo(State.Server,request.username, request.publicKey, unknownClient ,aes_sender,null);
+                        String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey())+":" + aes_user;
+                        writer.println(accepted);
                     }
                 } catch (IOException ex) {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -296,7 +303,7 @@ public class Main {
                         // allow connection with known user only
                         if (falseConnection(connectionKey)) {
                             System.out.println("connection closed for (server): " + peerIdentity);
-                            unknownConnection.putIfAbsent(connectionKey.md5, System.currentTimeMillis());
+                            unknownConnection.putIfAbsent(connectionKey.toString(), System.currentTimeMillis());
                             incoming.close();
                             continue;
                         }
@@ -332,7 +339,7 @@ public class Main {
         new Thread(() -> {
             String message = PREFIX_CONNECT + user.getMd5() + ":" + getLocalIp() + ":" + this.port;
 
-            if (!debug) {
+            if (true) {
                 System.out.println("broadcasting this message in bytes: " + message);
             }
 
@@ -356,6 +363,7 @@ public class Main {
                             InetAddress.getByName(Broadcast_id),
                             udp_port
                     );
+                    System.out.println("packets sent: " + message);
                     dSocket.send(packet);
                 } catch (IOException e) {
                     System.out.println("Error sending UDP broadcast: " + e.getMessage());
@@ -470,14 +478,23 @@ public class Main {
         }
     }
 
-    private void saveSenderInfo(String username, String publicKey, String stringKey) {
+    private String saveSenderInfo(State state, String username, String publicKey, ConnectionKey stringKey, byte[] aes_sender, byte[] aes_user) {
         Query query = new Query(this.debug);
 
         SenderInfo sender = new SenderInfo(username, publicKey);
-
-        query.newConversation(this.user, sender);
+        
+        byte[] new_aes_user = query.newConversation(state, this.user, sender, aes_sender, aes_user);
         unknownConnection.remove(stringKey);
         query.closeConnection();
+        if(new_aes_user == null){
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(new_aes_user);
+    }
+    
+    public enum State{
+        requester,
+        Server
     }
 
     /**
@@ -485,13 +502,15 @@ public class Main {
      *
      * @param stringKey
      */
-    protected void getSenderInfo(String stringKey) {
+    protected void getSenderInfo( String senderKey) {
         // TODO:  fix: when new user is added, one end /newSender adds the user to 
         // clients list faster than /openSender so newSender thinks they are connected, 
         // rejects other connection request from /openSender. /openSender thinks they
-        // are not connected so there is only one way message between each other. 
-        ConnectionKey senderConnectionKey = new ConnectionKey(stringKey, null);
-        int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1; // convention that the ask port will be +1 of the main server port
+        // are not connected so there is only one way message between each other.
+        System.out.println(senderKey);
+        ConnectionKey senderConnectionKey = new ConnectionKey(senderKey, null);
+        System.out.println("ip: "+senderConnectionKey.ip);
+        int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1;// TODO: not hardcode this // convention that the ask port will be +1 of the main server port
         System.out.println("getSenderInfo: " + senderConnectionKey);
         Socket host = null;
         try {
@@ -501,7 +520,11 @@ public class Main {
             System.out.println(host.getInetAddress().getHostAddress());
             
             //TODO: be more consistent with RequestInformation
-            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + getLocalIp() + ":" + this.port;
+            CryptoMessage crypt = new CryptoMessage(false);
+            byte[] salt = crypt.generateSalt();
+            byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
+            String aes_user_string = Base64.getEncoder().encodeToString(aes_user);
+            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":"+ aes_user_string + ":" + getLocalIp() +":" + this.port;
 
             PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
             BufferedReader reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
@@ -517,9 +540,11 @@ public class Main {
                 if (senderReply.equals("REJECTED:")) {
                     System.out.println("request rejected");
                 } else {
-                    NewConnection newConnection = new NewConnection(senderReply, PREFIX_REPLY_INFORMATION);
+                    NewConnectionAccepted newConnection = new NewConnectionAccepted(senderReply, PREFIX_REPLY_INFORMATION);
+                    byte[] aes_sender = Base64.getDecoder().decode(newConnection.AES);
                     System.out.println("Reply: " + newConnection);
-                    saveSenderInfo(newConnection.username, newConnection.publicKey, stringKey);
+                    saveSenderInfo(State.requester,newConnection.username, newConnection.publicKey, senderConnectionKey,aes_sender, aes_user);
+                    
                 }
             }
         } catch (SocketTimeoutException ex) {
@@ -568,11 +593,13 @@ public class Main {
                     }
                     case "/newSender": {
                         messenger.connectNewSender();
+                        messenger.gui.updateContacts();
                         i = parsed_message.length + 1; 
                         break;
                     }
                     case "/openSender": {
                         messenger.newSenderInPermission(scan);
+                        messenger.gui.updateContacts();
                         i = parsed_message.length + 1;
                         break;
                     }
@@ -586,4 +613,5 @@ public class Main {
 
         }
     }
+    
 }

@@ -122,14 +122,21 @@ public class GetConnectionDB {
     }
 
     private void createCommunicationParticipantsTable(){
-        String sql = "CREATE TABLE IF NOT EXISTS communication_participants ("
-                + "uid BIGINT NOT NULL,"
-                + "sid BIGINT NOT NULL,"
-                + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-                + "PRIMARY KEY(uid, sid),"
-                + "FOREIGN KEY(uid) REFERENCES users(uid) ON DELETE CASCADE,"
-                + "FOREIGN KEY(sid) REFERENCES senders(sid) ON DELETE CASCADE"
-                + ");";
+        String sql = "CREATE TABLE IF NOT EXISTS communication_participants (\n" +
+                    "    uid BIGINT(20) NOT NULL," +
+                    "    sid BIGINT(20) NOT NULL," +
+                    "    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "    aes_sender VARBINARY(600) NULL," +
+                    "    aes_user VARBINARY(600) NULL," +
+                    "    username TEXT NULL," +
+                    "    PRIMARY KEY (uid, sid)," +
+                    "    FOREIGN KEY (uid) REFERENCES users(uid)" +
+                    "        ON UPDATE CASCADE" +
+                    "        ON DELETE CASCADE," +
+                    "    FOREIGN KEY (sid) REFERENCES senders(sid)" +
+                    "        ON UPDATE CASCADE" +
+                    "        ON DELETE CASCADE" +
+                    ");";
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
         }catch (SQLException e) {

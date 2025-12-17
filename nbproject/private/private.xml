@@ -9,8 +9,22 @@
             <file>file:/home/theunknown/git/MessagingApplication/src/frontend/StatusUi.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/frontend/MessageManager.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/main/Main.java</file>
-            <file>file:/home/theunknown/git/MessagingApplication/src/main/NewConnection.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/main/NewConnectionAccepted.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/main/get_message.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/SendMessage.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/EncryptedMessage.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/main/ConnectionKey.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/Query.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoPassword.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoRSA.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/UserInfo.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/crypto/CryptoMessage.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/frontend/ContactsMessage.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/main/RequestInformation.java</file>
             <file>file:/home/theunknown/git/MessagingApplication/src/main/Message.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/SenderInfo.java</file>
+            <file>file:/home/theunknown/git/MessagingApplication/src/database/DatabaseInfo.java</file>
         </group>
     </open-files>
 </project-private>

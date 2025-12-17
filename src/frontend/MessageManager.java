@@ -4,6 +4,7 @@
  */
 package frontend;
 
+import crypto.CryptoMessage;
 import database.Query;
 import database.UserInfo;
 import javax.swing.SwingUtilities;
@@ -18,7 +19,7 @@ public class MessageManager implements Runnable {
 
     FrameUi frame = null;
     UserInfo user = null;
-    
+    private CryptoMessage crypto = new CryptoMessage();
     private Query query = new Query(false);
 
     public MessageManager(FrameUi frame, UserInfo user) {
@@ -44,8 +45,11 @@ public class MessageManager implements Runnable {
                 if (message == null) {
                     System.out.println("it's null");
                 } else {
+                    byte[] aesKeyBytes = query.relatedUserAES(user.getId(), message.getSenderInfo().getId());
+                    System.out.println("aesKeyBytes(MessageManager): " + aesKeyBytes);
+                    String decrypted= CryptoMessage.decryptMessage(message.getEncryptedMessage(), aesKeyBytes);
                     SwingUtilities.invokeLater(() -> {
-                        frame.chatUi.showMessage.append(message.getSenderInfo().username + ": " + message.getEncryptedMessage().replace("//n", "\n") + "\n");
+                        frame.chatUi.showMessage.append(message.getSenderInfo().username + ": " + decrypted.replace("//n", "\n") + "\n");
                         frame.chatUi.showMessage.setCaretPosition(frame.chatUi.showMessage.getDocument().getLength());
                     });
                     // System.out.println(message.getSenderInfo().username + ": " + message.getEncryptedMessage().replace("//n","\n"));}}

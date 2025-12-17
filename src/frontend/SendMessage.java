@@ -4,6 +4,8 @@
  */
 package frontend;
 
+import crypto.CryptoMessage;
+import database.Query;
 import database.SenderInfo;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -16,30 +18,37 @@ import static main.Main.clients;
  * @author theunknown
  */
 public class SendMessage {
-
-    public static boolean sendMessage(String md5, String message) {
-        ConnectionKey connectionKey = new ConnectionKey(md5);
+CryptoMessage crypto = new CryptoMessage();
+    public boolean sendMessage(int uid,SenderInfo sender, String message) {
         // TODO: properly handel the END_MESSAGE
         final String END_MESSAGE = ":END_OF_MESSAGE:";
 
         message.replace("\n", "//n");
 
-        System.out.println("send_message: " + connectionKey);
+        System.out.println("send_message: " + sender);
 
-        if (!clients.containsKey(connectionKey.md5)) {
+        if (!clients.containsKey(sender.getFingerpring())) {
             System.err.println("User does not exist");
             return true;
         }
 
-        Socket activeSocket = clients.get(connectionKey.md5);
+        Socket activeSocket = clients.get(sender.getFingerpring());
+        
+        Query query = new Query(false);
+        byte[] aes_sender = query.relatedSenderAES(uid, sender.getId());
+        query.closeConnection();
+        String encryptedMessage = crypto.encryptMessage(message, aes_sender);
 
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);
-            writer.println(message);
+//            EncryptedMessage crypto.encryptMessage(message, );
+            writer.println(encryptedMessage);
             writer.println(END_MESSAGE);
         } catch (IOException e) {
             System.err.println("Could not create a new reader and writer to send message: " + e.getMessage());
         }
         return false;
     }
+    
+
 }

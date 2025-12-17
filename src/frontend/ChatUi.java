@@ -22,10 +22,14 @@ import database.SenderInfo;
 import database.UserInfo;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 
 
 
@@ -34,6 +38,7 @@ import javax.swing.ListSelectionModel;
  * @author theunknown
  */
 public class ChatUi {
+    JFrame frame;
     UserInfo user;
     private Query query = new Query(false);
 
@@ -54,6 +59,7 @@ public class ChatUi {
 
     public ChatUi(UserInfo user, JFrame parentFrame){
         assert user!=null;
+        this.frame = parentFrame;
         
         this.user = user;
         
@@ -111,8 +117,14 @@ public class ChatUi {
                         System.out.println("it's null getSelectedSender()");
                         return;
                     }
-
-                    SendMessage.sendMessage(getSelectedSender().getFingerpring(), unsafeMessage);
+                    SendMessage sendmessage = new SendMessage();
+                    
+                    sendmessage.sendMessage(user.id,getSelectedSender(), unsafeMessage);
+                    SwingUtilities.invokeLater(() -> {
+                        showMessage.append(unsafeMessage+"\n");
+                        showMessage.setCaretPosition(showMessage.getDocument().getLength());
+                    });
+                    messageField.setText("");
                 }break;
                 default:{
                     System.err.println("unreachable in ChatUi onClick");
@@ -122,9 +134,18 @@ public class ChatUi {
     }
     
     protected void loadContacts(){
+        contactListModel.clear();
         List<SenderInfo> contacts = new ArrayList<>(this.query.getContacts(this.user));
         contacts.forEach((e)->{
-            contactListModel.addElement(e);
+            try {
+                SwingUtilities.invokeAndWait(()->{
+                    contactListModel.addElement(e);
+                });
+            } catch (InterruptedException ex) {
+                Logger.getLogger(ChatUi.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InvocationTargetException ex) {
+                Logger.getLogger(ChatUi.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
         contactList.setSelectedIndex(0);
     }

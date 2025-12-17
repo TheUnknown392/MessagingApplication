@@ -46,4 +46,7 @@ public class FrameUi {
         frame.setVisible(true);
         
     }
+    public void updateContacts(){
+        chatUi.loadContacts();
+    }
 }

@@ -8,22 +8,24 @@ package main;
  *
  * @author theunknown
  */
-public class NewConnection {
+public class NewConnectionAccepted {
     // TODO: rename this class with better name
     String username;
     String publicKey;
+    String AES;
     
     // username:publicKey
-    public NewConnection(String key, String PREFIX){
+    public NewConnectionAccepted(String key, String PREFIX){
         if (key != null && key.startsWith(PREFIX)) {
             String[] parts = key.substring(PREFIX.length()).split(":");
             this.username = parts[0];
             this.publicKey= parts[1];
+            this.AES = parts[2];
         }
     }
     
     @Override
     public String toString(){
-        return this.username + ":" + this.publicKey;
+        return this.username + ":" + this.publicKey + ":" + this.AES;
     }
 }

@@ -15,8 +15,10 @@ import crypto.*;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
+import main.Main.State;
 import main.Message;
 
 /**
@@ -271,6 +273,58 @@ public class Query {
         return sender;
     }
 
+    public byte[] relatedSenderAES(int uid, int sid) {
+        SenderInfo sender = null;
+        try {
+            stmt = conn.prepareStatement("SELECT * from communication_participants where uid = ? and sid = ?");
+            stmt.setInt(1, uid);
+            stmt.setInt(2, sid);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getBytes("aes_sender");
+            } else {
+                System.err.println("unable to get info (relatedSenderAES)"); // TODO: remove the invalid user from database
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return null;
+    }
+
+    public byte[] relatedUserAES(int uid, int sid) {
+        SenderInfo sender = null;
+        try {
+            stmt = conn.prepareStatement("SELECT * from communication_participants where uid = ? and sid = ?");
+            stmt.setInt(1, uid);
+            stmt.setInt(2, sid);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getBytes("aes_user");
+            } else {
+                System.err.println("unable to get info (relatedUserAES)"); // TODO: remove the invalid user from database
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return null;
+    }
+
     /**
      * gets sender from sid
      *
@@ -306,8 +360,14 @@ public class Query {
         return sender;
     }
 
-    public boolean newConversation(UserInfo user, SenderInfo sender) {
+    // TODO: forgot we have over riding. Make over rided newConversation?
+    public byte[] newConversation(State state, UserInfo user, SenderInfo sender, byte[] aes_sender, byte[] aes_user) {
         // TODO: have the aes key in conversation_participants
+        byte[] AES = null;
+        if (state == State.Server) {
+            CryptoMessage crypt = new CryptoMessage(false);
+            AES = crypt.getAESKeyBytesFromPassword(user.getPasswordHashed().toString(), crypt.generateSalt());
+        }
 
         if (!hasSender(sender.getFingerpring())) {
             if (saveNewSender(sender)) {
@@ -318,10 +378,17 @@ public class Query {
         sender = getSender(sender.getFingerpring());
 
         try {
-            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username) values(?,?,?);");
+            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username, aes_user,aes_sender) values(?,?,?,?,?);");
             stmt.setInt(1, user.id);
             stmt.setInt(2, sender.getId());
             stmt.setString(3, sender.username);
+            if (state == State.requester) {
+                stmt.setBytes(4, aes_user);
+                stmt.setBytes(5, aes_sender);
+            } else {
+                stmt.setBytes(4, AES);
+                stmt.setBytes(5, aes_sender);
+            }
             if (!debug) {
                 System.out.println("INSERT INTO communication_participants(uid, sid, username) values(" + user.id + "," + sender.getId() + "," + sender.username + ");");
             }
@@ -330,8 +397,9 @@ public class Query {
 
             if (effectedRow == 0) {
                 System.out.println("conversation not added");
-                return true;
             }
+
+            return AES;
 
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
@@ -343,7 +411,7 @@ public class Query {
                 Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        return false;
+        return null;
     }
 
     public boolean hasSender(String md5) {
@@ -451,33 +519,36 @@ public class Query {
 
     public boolean saveIncommingEncryptedMessage(Message messageInfo, UserInfo user) {
         SenderInfo sender = messageInfo.getSenderInfo();
-        String message = messageInfo.getEncryptedMessage();
-        try {
-            stmt = conn.prepareStatement("INSERT INTO cypher_messages(sender, uid, sid, ciphertext,iv,read_state) VALUES"
-                                       + "(1, ?, ?, ?, ?, 0)"); // TODO: handle read_state.
-            stmt.setInt(1, user.getId());
-            stmt.setInt(2, sender.getId());
-            stmt.setBytes(3, message.getBytes());
-            
-            // TODO: get proper iv
-            SecureRandom random = new SecureRandom();
-            byte[] randomBytes = new byte[20];
-            random.nextBytes(randomBytes);
-            
-            stmt.setBytes(4, randomBytes);
-            
-            int affectedRows = stmt.executeUpdate();
+        String encrypted = messageInfo.getEncryptedMessage();
 
+        try {
+            byte[] combined = Base64.getDecoder().decode(encrypted);
+            int ivLength = 12;
+            byte[] ciphertext = new byte[combined.length - ivLength];
+            byte[] iv = new byte[ivLength];
+
+            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);
+            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);
+
+            stmt = conn.prepareStatement("INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state,sender) VALUES (?,?, ?, ?, ?, 0)");
+            stmt.setInt(1, user.getId());           
+            stmt.setInt(2, sender.getId());         
+            stmt.setBytes(3, ciphertext);           
+            stmt.setBytes(4, iv); 
+            stmt.setBoolean(5, false);
+
+            int affectedRows = stmt.executeUpdate();
             if (affectedRows != 1) {
-                System.err.println("Error storing messages. effected rows: " + affectedRows);
+                System.err.println("Error storing message. Affected rows: " + affectedRows);
             }
             return false;
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             try {
-                stmt.close();
-                stmt = null;
+                if (stmt != null) {
+                    stmt.close();
+                }
             } catch (SQLException ex) {
                 Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
             }

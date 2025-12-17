@@ -9,10 +9,11 @@ package main;
  * @author theunknown
  */
 public class RequestInformation {
-//    PREFIX_REQUEST_INFORMATION + user.username + ":" + user.publicKey + ":" + getLocalIp() + ":" + this.port;
+//    PREFIX_REQUEST_INFORMATION + user.username + ":" + user.publicKey + ":"+AES+":" + getLocalIp() + ":" + this.port;
 
     public String username;
     public String publicKey;
+    public String AES;
     public String ip;
     public String port;
 
@@ -21,12 +22,13 @@ public class RequestInformation {
             String[] parts = key.substring(PREFIX.length()).split(":");
             this.username = parts[0];
             this.publicKey = parts[1];
-            this.ip = parts[2];
-            this.port = parts[3];
+            this.AES = parts[2];
+            this.ip = parts[3];
+            this.port = parts[4];
         }
     }
     @Override
     public String toString(){
-        return this.username + ":" + this.publicKey + ":" + this.ip + ":" + this.port;
+        return this.username + ":" + this.publicKey + ":" +this.AES+ ":" + this.ip + ":" + this.port;
     }
 }

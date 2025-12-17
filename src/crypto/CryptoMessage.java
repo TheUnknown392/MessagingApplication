@@ -7,6 +7,7 @@ package crypto;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
@@ -22,6 +23,7 @@ import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,16 +35,21 @@ import javax.crypto.AEADBadTagException;
  */
 public class CryptoMessage {
 
-    private final int AES_LEN = 128;
+    private static final int AES_LEN = 128;
     private boolean debug;
 
     public CryptoMessage(boolean debug) {
         this.debug = debug;
     }
 
+    public CryptoMessage() {
+        this.debug = false;
+    }
+
     /**
      * generates Salt
-     * @return 
+     *
+     * @return
      */
     public byte[] generateSalt() {
         byte[] salt = new byte[16];
@@ -56,7 +63,8 @@ public class CryptoMessage {
 
     /**
      * generates IV
-     * @return 
+     *
+     * @return
      */
     private byte[] generateIV() {
         byte[] iv = new byte[12];
@@ -70,9 +78,10 @@ public class CryptoMessage {
 
     /**
      * generates AES from password
+     *
      * @param password
      * @param salt
-     * @return 
+     * @return
      */
     public SecretKey getAESKeyFromPassword(String password, byte[] salt) {
         SecretKeyFactory factory;
@@ -94,20 +103,57 @@ public class CryptoMessage {
             }
 
         } catch (NoSuchAlgorithmException ex) {
-                if (debug) {
-                    System.err.println("AES form Password not created, NoSuchAlgorithmException");
-                }
+            if (debug) {
+                System.err.println("AES form Password not created, NoSuchAlgorithmException");
+            }
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
+
+    /**
+     * Generates AES key bytes from password
+     *
+     * @param password the password
+     * @param salt the salt
+     * @return derived AES key as byte[]
+     */
+    public byte[] getAESKeyBytesFromPassword(String password, byte[] salt) {
+        try {
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, AES_LEN);
+
+            try {
+                if (debug) {
+                    System.out.println("AES key bytes created");
+                }
+                return factory.generateSecret(spec).getEncoded();
+
+            } catch (InvalidKeySpecException ex) {
+                if (debug) {
+                    System.err.println("AES key bytes not created, InvalidKeySpecException");
+                }
+                Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        } catch (NoSuchAlgorithmException ex) {
+            if (debug) {
+                System.err.println("AES key bytes not created, NoSuchAlgorithmException");
+            }
+            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        return null;
+    }
+
     /**
      * stores AES key to location
+     *
      * @param location
-     * @param aesKey 
+     * @param aesKey
      */
-    public void storeAESkey(String location, SecretKey aesKey){
-        try(FileOutputStream output = new FileOutputStream(location)) {
+    public void storeAESkey(String location, SecretKey aesKey) {
+        try (FileOutputStream output = new FileOutputStream(location)) {
             output.write(aesKey.getEncoded());
         } catch (FileNotFoundException ex) {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
@@ -115,84 +161,97 @@ public class CryptoMessage {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     /**
      * gets saved AES key from location
+     *
      * @param location
-     * @return 
+     * @return
      */
-    public SecretKey readAESkey(String location){
+    public SecretKey readAESkey(String location) {
         try {
             byte[] aesByte = Files.readAllBytes(Paths.get(location));
-            return new SecretKeySpec(aesByte,"AES");
+            return new SecretKeySpec(aesByte, "AES");
         } catch (IOException ex) {
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
-    
+
     /**
      * gets AES SecretKey from aesByte
+     *
      * @param location
-     * @return 
+     * @return
      */
-    public SecretKey readAESkey(byte[] aesByte){
-        return new SecretKeySpec(aesByte,"AES");
+    public SecretKey readAESkey(byte[] aesByte) {
+        return new SecretKeySpec(aesByte, "AES");
     }
 
     /**
-     * encrypts plaintext with aesKey 
+     * encrypts plaintext with aesKey
+     *
      * @param plaintext
      * @param aesKey
      * @return
      */
-    public EncryptedMessage encryptMessage(String plaintext, SecretKey aesKey) {
-
+    public String encryptMessage(String plaintext, byte[] aesKeyBytes) {
         try {
-           byte[] iv = new byte[12];
-            iv = generateIV(); 
-            
-            // AES Encrypt
+            byte[] iv = generateIV();
+            SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, iv);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, iv);  
             cipher.init(Cipher.ENCRYPT_MODE, aesKey, gcmSpec);
-            byte[] cipherText = cipher.doFinal(plaintext.getBytes());
-            
-            return new EncryptedMessage(cipherText, iv);
+
+            byte[] cipherText = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+            byte[] combined = new byte[cipherText.length + iv.length];
+            System.arraycopy(cipherText, 0, combined, 0, cipherText.length);
+            System.arraycopy(iv, 0, combined, cipherText.length, iv.length);
+
+            if (debug) {
+                System.out.println("Message encrypted successfully");
+            }
+            return Base64.getEncoder().encodeToString(combined);
+
         } catch (Exception ex) {
+            if (debug) {
+                System.err.println("Encryption failed: " + ex.getMessage());
+            }
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
 
-    /**
-     * decrypts encryptedMessage with aesKey
-     * @param encryptedMessage
-     * @param aesKey
-     * @return 
-     */
-    public String decryptMessage(EncryptedMessage encryptedMessage, SecretKey aesKey){
-
+    public static String decryptMessage(String base64Combined, byte[] aesKeyBytes) {
         try {
-            // 1. Initialize cipher with IV
+            byte[] combined = Base64.getDecoder().decode(base64Combined);
+            SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+
+            int ivLength = 12;
+            byte[] iv = new byte[ivLength];
+            byte[] cipherText = new byte[combined.length - ivLength];
+
+            
+            System.arraycopy(combined, 0, cipherText, 0, cipherText.length);
+            System.arraycopy(combined, cipherText.length, iv, 0, ivLength);
+
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, encryptedMessage.iv);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, iv);  
             cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
 
-            // 2. Decrypt
-            try {
-                byte[] plainBytes = cipher.doFinal(encryptedMessage.cypherText);
-                return new String(plainBytes);
-            } catch (AEADBadTagException e) {
-                System.out.println("IV, salt or password are incorrect: " + e.getMessage());
-                System.exit(2);
-            } catch (GeneralSecurityException e) {
-                System.out.println("Some security Error: " + e.getMessage());
-                System.exit(3);
-            }
+            byte[] plainBytes = cipher.doFinal(cipherText);
+            return new String(plainBytes, StandardCharsets.UTF_8);
+
+        } catch (AEADBadTagException ex) {
+         
+            System.err.println("decryption failed bad tag exception");
+            Logger.getLogger(CryptoMessage.class.getName()).log(Level.WARNING, "AEADBadTagException", ex);
         } catch (Exception ex) {
+            System.err.println("decryption failed exception: ");
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
+
 }
