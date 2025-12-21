@@ -360,15 +360,8 @@ public class Query {
         return sender;
     }
 
-    // TODO: forgot we have over riding. Make over rided newConversation?
-    public byte[] newConversation(State state, UserInfo user, SenderInfo sender, byte[] aes_sender, byte[] aes_user) {
-        // TODO: have the aes key in conversation_participants
-        byte[] AES = null;
-        if (state == State.Server) {
-            CryptoMessage crypt = new CryptoMessage(false);
-            AES = crypt.getAESKeyBytesFromPassword(user.getPasswordHashed().toString(), crypt.generateSalt());
-        }
-
+    // TODO: forgot we have over riding. Make over rided newConversation? or split this method to two. remove state stuff
+    public void newConversation(UserInfo user, SenderInfo sender, byte[] aes_user, byte[] aes_sender) {
         if (!hasSender(sender.getFingerpring())) {
             if (saveNewSender(sender)) {
                 System.err.println("failed to save new sender (newConversation)");
@@ -378,17 +371,12 @@ public class Query {
         sender = getSender(sender.getFingerpring());
 
         try {
-            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username, aes_user,aes_sender) values(?,?,?,?,?);");
+            stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username, aes_user ,aes_sender) values(?,?,?,?,?);");
             stmt.setInt(1, user.id);
             stmt.setInt(2, sender.getId());
             stmt.setString(3, sender.username);
-            if (state == State.requester) {
-                stmt.setBytes(4, aes_user);
-                stmt.setBytes(5, aes_sender);
-            } else {
-                stmt.setBytes(4, AES);
-                stmt.setBytes(5, aes_sender);
-            }
+            stmt.setBytes(4, aes_user);
+            stmt.setBytes(5, aes_sender);
             if (!debug) {
                 System.out.println("INSERT INTO communication_participants(uid, sid, username) values(" + user.id + "," + sender.getId() + "," + sender.username + ");");
             }
@@ -398,9 +386,6 @@ public class Query {
             if (effectedRow == 0) {
                 System.out.println("conversation not added");
             }
-
-            return AES;
-
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
@@ -411,7 +396,6 @@ public class Query {
                 Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        return null;
     }
 
     public boolean hasSender(String md5) {

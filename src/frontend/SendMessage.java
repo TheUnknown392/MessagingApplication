@@ -18,7 +18,7 @@ import static main.Main.clients;
  * @author theunknown
  */
 public class SendMessage {
-CryptoMessage crypto = new CryptoMessage();
+//CryptoMessage crypto = new CryptoMessage();
     public boolean sendMessage(int uid,SenderInfo sender, String message) {
         // TODO: properly handel the END_MESSAGE
         final String END_MESSAGE = ":END_OF_MESSAGE:";
@@ -37,7 +37,7 @@ CryptoMessage crypto = new CryptoMessage();
         Query query = new Query(false);
         byte[] aes_sender = query.relatedSenderAES(uid, sender.getId());
         query.closeConnection();
-        String encryptedMessage = crypto.encryptMessage(message, aes_sender);
+        String encryptedMessage = CryptoMessage.encryptMessage(message, aes_sender);
 
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);

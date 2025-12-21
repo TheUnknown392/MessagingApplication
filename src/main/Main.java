@@ -9,6 +9,7 @@ import database.*;
 import crypto.*;
 import frontend.FrameUi;
 import frontend.LandingUi;
+import java.security.PrivateKey;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,13 +30,13 @@ public class Main {
     protected static Boolean EXIT = false;
 
     // String Key = md5 + ":" + peerIp +":"+ peerPort;
-    public static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<String,Socket>();
+    public static ConcurrentHashMap<String, Socket> clients = new ConcurrentHashMap<String, Socket>();
 
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
     public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
-    
+
     FrameUi gui = null;
     public UserInfo user = null;
 
@@ -69,7 +70,7 @@ public class Main {
     private void getCurrentUser() {
         LandingUi landingUi = new LandingUi(null);
         this.user = landingUi.showDialog();
-        if(this.user == null){
+        if (this.user == null) {
             System.exit(0);
         }
     }
@@ -80,7 +81,7 @@ public class Main {
      * @param received
      */
     private void sendConnectionRequest(String received) { // client side socket
-        System.out.println("send Connection Request: "+ received);;
+        System.out.println("send Connection Request: " + received);;
         ConnectionKey connectionKey = new ConnectionKey(received, PREFIX_CONNECT);
         System.out.println("connectionKey: " + connectionKey);
         // ignore if invalid data
@@ -105,8 +106,8 @@ public class Main {
             }
             return;
         }
-        
-        if(connectionKey.port.equals("") || connectionKey.port == null){
+
+        if (connectionKey.port.equals("") || connectionKey.port == null) {
             System.out.println("it's null sendConnectionRequest()");
         }
         int peerServerPort = Integer.parseInt(connectionKey.port);
@@ -177,7 +178,6 @@ public class Main {
         query.closeConnection();
         return false;
     }
-    
 
     /**
      * gets local IP
@@ -204,6 +204,9 @@ public class Main {
         System.out.println("Enter y or n: ");
         ServerSocket askServer = null;
         Socket socket = null;
+
+        PrintWriter writer = null;
+        BufferedReader reader = null;
         try {
             System.out.println("Server listening on: " + portAsk);
             askServer = new ServerSocket(portAsk);
@@ -213,28 +216,62 @@ public class Main {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String peerIdentity = in.readLine();
 
-            if (peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
-                RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
-                System.out.println("Request by: " + request); // TODO: some abstraction/polymorphism?
-                try (PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
-                    String choice = scan.nextLine().toLowerCase();
-                    if (!(choice.equals("y") || choice.equals("yes"))) {
-                        writer.println("REJECTED:");
-                    } else {
-                        String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
-                        System.out.println("key: " + key);
-                        ConnectionKey unknownClient = new ConnectionKey(key,PREFIX_CONNECT);
-                        System.out.println("AES: " + request.AES);
-                        byte[] aes_sender = Base64.getDecoder().decode(request.AES);
-                        String aes_user = saveSenderInfo(State.Server,request.username, request.publicKey, unknownClient ,aes_sender,null);
-                        String accepted = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey())+":" + aes_user;
-                        writer.println(accepted);
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-                }
+            if (!peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
+                return;
+            }
+            
+            RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
+            System.out.println("Request by: " + request); // TODO: some abstraction/polymorphism?
+
+            writer = new PrintWriter(socket.getOutputStream(), true);
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            String choice = scan.nextLine().toLowerCase();
+            if (!(choice.equals("y") || choice.equals("yes"))) {
+                writer.println("REJECTED:");
+                return;
             }
 
+            String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
+            System.out.println("key: " + key);
+            ConnectionKey unknownClient = new ConnectionKey(key, PREFIX_CONNECT);
+
+            // TODO: make this part a method of itself.
+            CryptoMessage crypt = new CryptoMessage(false);
+            byte[] salt = crypt.generateSalt();
+            byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
+            
+            String encrypted_aes_user = CryptoRSA.encrypt(CryptoRSA.getPublicKeyFromString(request.publicKey), aes_user);
+
+            String senderReply = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + encrypted_aes_user;
+            System.out.println("from newSenderInPermission: " + senderReply);
+            writer.println(senderReply); // send our aes key
+            
+            String reply =  null;
+            while(reply == null){
+                reply = reader.readLine(); // get their aes key
+            }
+            
+            if(reply.equals("FAILED:")){
+                System.out.println("Failed by client");
+                return;
+            }
+            
+            NewConnectionAccepted sucessfull = new NewConnectionAccepted(reply, PREFIX_REPLY_INFORMATION);
+            byte[] encrypted_aes_sender = Base64.getDecoder().decode(sucessfull.AES);
+            
+            PrivateKey privateKey = CryptoRSA.loadPrivateKeyFromFile(this.user.getUsername());
+            byte[] aes_sender = CryptoRSA.decrypt(privateKey, encrypted_aes_sender);
+            if (aes_sender == null) {
+                System.out.println("decryption failed");
+                writer.println("FAILED:");
+                return;
+            }
+            writer.println(sucessfull.toString()); // sending random information that is not "FAILED:"
+            
+            System.out.println("Reply: " + sucessfull.toString());
+            saveSenderInfo(sucessfull.username, sucessfull.publicKey, unknownClient, aes_user, aes_sender);
+            unknownConnection.remove(unknownClient);
         } catch (SocketTimeoutException e) {
             System.out.println("Timeout");
         } catch (ConnectException e) {
@@ -469,30 +506,28 @@ public class Main {
             return;
         }
         String chosenKey;
-        try{
+        try {
             chosenKey = availableKeys.get(choice);
             System.out.println("Going to getSenderInfo");
+            System.out.println(chosenKey + " from connectNewSender()");
             getSenderInfo(chosenKey);
-        }catch(IndexOutOfBoundsException e){
-            
+        } catch (IndexOutOfBoundsException e) {
+
         }
     }
 
-    private String saveSenderInfo(State state, String username, String publicKey, ConnectionKey stringKey, byte[] aes_sender, byte[] aes_user) {
+    private String saveSenderInfo(String username, String publicKey, ConnectionKey stringKey, byte[] aes_sender, byte[] aes_user) {
         Query query = new Query(this.debug);
 
         SenderInfo sender = new SenderInfo(username, publicKey);
-        
-        byte[] new_aes_user = query.newConversation(state, this.user, sender, aes_sender, aes_user);
+
+        query.newConversation(this.user, sender, aes_sender, aes_user);
         unknownConnection.remove(stringKey);
         query.closeConnection();
-        if(new_aes_user == null){
-            return null;
-        }
-        return Base64.getEncoder().encodeToString(new_aes_user);
+        return Base64.getEncoder().encodeToString(aes_user);
     }
-    
-    public enum State{
+
+    public enum State {
         requester,
         Server
     }
@@ -502,51 +537,80 @@ public class Main {
      *
      * @param stringKey
      */
-    protected void getSenderInfo( String senderKey) {
+    protected void getSenderInfo(String senderKey) {
         // TODO:  fix: when new user is added, one end /newSender adds the user to 
         // clients list faster than /openSender so newSender thinks they are connected, 
         // rejects other connection request from /openSender. /openSender thinks they
         // are not connected so there is only one way message between each other.
         System.out.println(senderKey);
         ConnectionKey senderConnectionKey = new ConnectionKey(senderKey, null);
-        System.out.println("ip: "+senderConnectionKey.ip);
+        System.out.println("ip: " + senderConnectionKey.ip);
         int peerServerPort = Integer.parseInt(senderConnectionKey.port) + 1;// TODO: not hardcode this // convention that the ask port will be +1 of the main server port
         System.out.println("getSenderInfo: " + senderConnectionKey);
         Socket host = null;
+        PrintWriter writer = null;
+        BufferedReader reader = null;
         try {
             host = new Socket();
             System.out.println("Client connecting to: " + senderConnectionKey.ip + ":" + peerServerPort);
             host.connect(new InetSocketAddress(senderConnectionKey.ip, peerServerPort), (int) CONNECT_COOLDOWN_MS);
             System.out.println(host.getInetAddress().getHostAddress());
-            
-            //TODO: be more consistent with RequestInformation
-            CryptoMessage crypt = new CryptoMessage(false);
-            byte[] salt = crypt.generateSalt();
-            byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
-            String aes_user_string = Base64.getEncoder().encodeToString(aes_user);
-            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":"+ aes_user_string + ":" + getLocalIp() +":" + this.port;
 
-            PrintWriter writer = new PrintWriter(host.getOutputStream(), true);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
+            //TODO: be more consistent with RequestInformation. Correct having to put empty space " "
+            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + " " + ":"+ getLocalIp() + ":" + this.port;
+
+            writer = new PrintWriter(host.getOutputStream(), true);
+            reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
             writer.println(requestKey);
 
             if (!debug) {
                 System.out.println("Connection request sent to: (getSenderInfo) " + senderConnectionKey.ip);
             }
 
-            if (host.isConnected()) {
-                String senderReply = reader.readLine();
-
-                if (senderReply.equals("REJECTED:")) {
-                    System.out.println("request rejected");
-                } else {
-                    NewConnectionAccepted newConnection = new NewConnectionAccepted(senderReply, PREFIX_REPLY_INFORMATION);
-                    byte[] aes_sender = Base64.getDecoder().decode(newConnection.AES);
-                    System.out.println("Reply: " + newConnection);
-                    saveSenderInfo(State.requester,newConnection.username, newConnection.publicKey, senderConnectionKey,aes_sender, aes_user);
-                    
-                }
+            if (!host.isConnected()) {
+                return;
             }
+            
+            String senderReply = reader.readLine();
+            if (senderReply.equals("REJECTED:")) {
+                System.out.println("request rejected string senderReply < getSenderInfo");
+                return;
+            }
+            
+            // get the aes key
+            NewConnectionAccepted newConnection = new NewConnectionAccepted(senderReply, PREFIX_REPLY_INFORMATION);
+            System.out.println("from getSenderInfo: " + senderReply);
+            
+            //decode
+            byte[] encrypted_aes_sender = Base64.getDecoder().decode(newConnection.AES);
+
+            PrivateKey privateKey = CryptoRSA.loadPrivateKeyFromFile(this.user.getUsername());
+            byte[] aes_sender = CryptoRSA.decrypt(privateKey, encrypted_aes_sender); // we have their aes key
+            if (aes_sender == null) {
+                System.out.println("decryption failed");
+                writer.println("FAILED:");
+                return;
+            }
+            
+            CryptoMessage crypt = new CryptoMessage(false);
+            byte[] salt = crypt.generateSalt();
+            byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
+            
+            String encrypted_aes_user = CryptoRSA.encrypt(CryptoRSA.getPublicKeyFromString(newConnection.publicKey), aes_user);
+            
+            String accepted_request_key = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + encrypted_aes_user;
+            
+            writer.println(accepted_request_key);
+            String reply = reader.readLine();// send our aes key to them
+            
+            if(reply.equals("FAILED:")){
+                System.out.println("request rejected string reply < getSenderInfo");
+                return;
+            }
+            
+            System.out.println("Reply: " + newConnection); // if sucessfull we save it
+            saveSenderInfo(newConnection.username, newConnection.publicKey, senderConnectionKey, aes_user, aes_sender);
+            unknownConnection.remove(senderConnectionKey);
         } catch (SocketTimeoutException ex) {
             System.err.println("Did not respond");
         } catch (NoRouteToHostException e) {
@@ -587,14 +651,14 @@ public class Main {
                             i = parsed_message.length + 1;
                         } else {
                             System.out.println("Usage: /message /<username> <message>");
-                            i = parsed_message.length + 1; 
+                            i = parsed_message.length + 1;
                         }
                         break;
                     }
                     case "/newSender": {
                         messenger.connectNewSender();
                         messenger.gui.updateContacts();
-                        i = parsed_message.length + 1; 
+                        i = parsed_message.length + 1;
                         break;
                     }
                     case "/openSender": {
@@ -613,5 +677,5 @@ public class Main {
 
         }
     }
-    
+
 }

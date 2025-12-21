@@ -16,6 +16,7 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import javax.crypto.Cipher;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -49,18 +50,19 @@ public class CryptoRSA {
         }
         return null;
     }
-    
+
     /**
      * saves public key into the UserInfo and saves private key into a file
+     *
      * @param user
      * @param username
-     * @throws IOException 
+     * @throws IOException
      */
     public void saveNewKeys(UserInfo user, String username) throws IOException {
         KeyPair key = generateKeyPair();
         // TODO: make a folder to store key of different users
         String filePath = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
-        
+
         BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
         writer.write(privateKeyToString(key.getPrivate()));
         writer.close();
@@ -78,6 +80,7 @@ public class CryptoRSA {
     public static String publicKeyToString(PublicKey publicKey) {
         return Base64.getEncoder().encodeToString(publicKey.getEncoded());
     }
+
     /**
      * Convert byte[] public key to Base64 string
      *
@@ -127,7 +130,7 @@ public class CryptoRSA {
      * @param KeyString
      * @return
      */
-    public PrivateKey getPrivateKeyFromString(String KeyString) {
+    public static PrivateKey getPrivateKeyFromString(String KeyString) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(KeyString);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
@@ -208,14 +211,18 @@ public class CryptoRSA {
     }
 
     /**
-     * loads privateKey from location
+     * loads privateKey from username
      *
      * @param location
      * @return
      */
-    public PrivateKey loadPrivateKeyFromFile(String location) {
+    public static PrivateKey loadPrivateKeyFromFile(String username) {
+        String location = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
         File inFile = new File(location);
         if (!inFile.exists()) {
+            if (true) {
+                System.out.println("File does not exist.");
+            }
             return null;
         }
         try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -231,18 +238,19 @@ public class CryptoRSA {
             return null;
         }
     }
-    
+
     /**
      * converts public key to md5 fingerprint string
+     *
      * @param publicKeyBytes
-     * @return 
+     * @return
      */
-    public static String md5Fingerprint(byte[] publicKeyBytes){
+    public static String md5Fingerprint(byte[] publicKeyBytes) {
         StringBuilder md5 = null;
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] digest = md.digest(publicKeyBytes);
-            
+
             md5 = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
                 md5.append(String.format("%02x", b));
@@ -253,14 +261,14 @@ public class CryptoRSA {
         }
         return null;
     }
-    
-    public static String md5Fingerprint(String publicKeyString){
+
+    public static String md5Fingerprint(String publicKeyString) {
         byte[] publicKeyBytes = stringTobytes(publicKeyString);
         StringBuilder md5 = null;
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] digest = md.digest(publicKeyBytes);
-            
+
             md5 = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
                 md5.append(String.format("%02x", b));
@@ -271,12 +279,36 @@ public class CryptoRSA {
         }
         return null;
     }
+
     /**
      * decodes string and returns its byte[]
+     *
      * @param string
-     * @return 
+     * @return
      */
-    public static byte[] stringTobytes(String string){
+    public static byte[] stringTobytes(String string) {
         return Base64.getDecoder().decode(string);
+    }
+
+    public static String encrypt(PublicKey key, byte[] plaintext){
+        try {
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            return Base64.getEncoder().encodeToString(cipher.doFinal(plaintext));
+        } catch (Exception ex) {
+            System.getLogger(CryptoRSA.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        }
+        return null;
+    }
+
+    public static byte[] decrypt(PrivateKey key, byte[] ciphertext){
+        try {
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            return cipher.doFinal(ciphertext);
+        } catch (Exception ex) {
+            System.getLogger(CryptoRSA.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        }
+        return null;
     }
 }

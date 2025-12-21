@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -66,12 +65,9 @@ public class CryptoMessage {
      *
      * @return
      */
-    private byte[] generateIV() {
+    private static byte[] generateIV() {
         byte[] iv = new byte[12];
         SecureRandom random = new SecureRandom();
-        if (debug) {
-            System.out.println("iv created");
-        }
         random.nextBytes(iv);
         return iv;
     }
@@ -195,7 +191,7 @@ public class CryptoMessage {
      * @param aesKey
      * @return
      */
-    public String encryptMessage(String plaintext, byte[] aesKeyBytes) {
+    public static String encryptMessage(String plaintext, byte[] aesKeyBytes) {
         try {
             byte[] iv = generateIV();
             SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
@@ -209,13 +205,13 @@ public class CryptoMessage {
             System.arraycopy(cipherText, 0, combined, 0, cipherText.length);
             System.arraycopy(iv, 0, combined, cipherText.length, iv.length);
 
-            if (debug) {
+            if (true) { // TODO: remove these
                 System.out.println("Message encrypted successfully");
             }
             return Base64.getEncoder().encodeToString(combined);
 
         } catch (Exception ex) {
-            if (debug) {
+            if (true) {
                 System.err.println("Encryption failed: " + ex.getMessage());
             }
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);

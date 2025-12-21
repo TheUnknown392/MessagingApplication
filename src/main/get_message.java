@@ -58,7 +58,7 @@ public class get_message implements Runnable {
             StringBuilder fmessage = new StringBuilder();
             // TODO handel through EncryptedMessage
             String encryptedMessage;
-            while ((encryptedMessage = reader.readLine()) != null) {
+            while ((encryptedMessage = reader.readLine()) != null || !socket.isConnected()) {
                 if (EXIT) {
                     break;
                 }
@@ -95,7 +95,7 @@ public class get_message implements Runnable {
         }
 
         try {
-            if (socket != null && !socket.isClosed()) {
+            if (socket != null) {
                 socket.close();
             }
         } catch (IOException ignored) {
