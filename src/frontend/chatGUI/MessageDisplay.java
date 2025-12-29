@@ -16,7 +16,7 @@ import javax.swing.JTextArea;
 public class MessageDisplay {
     private HashMap<String, StringBuilder> messageHistories = new HashMap<>();
     public JTextArea showMessage = new JTextArea();
-
+    private String currentHistory = null;
     public MessageDisplay() {
         showMessage.setEditable(false);
     }
@@ -28,8 +28,15 @@ public class MessageDisplay {
     }
 
     public void showHistory(String md5) {
+        currentHistory = md5;
         messageHistories.putIfAbsent(md5, new StringBuilder());
         showMessage.setText(messageHistories.get(md5).toString());
         showMessage.setCaretPosition(showMessage.getDocument().getLength());
+    }
+    public void updateIfSelected(String md5){
+        if(currentHistory == null) return;
+        if(currentHistory.equals(md5)){
+            showHistory(md5);
+        }
     }
 }

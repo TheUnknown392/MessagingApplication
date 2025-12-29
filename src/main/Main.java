@@ -527,10 +527,6 @@ public class Main {
         return Base64.getEncoder().encodeToString(aes_user);
     }
 
-    public enum State {
-        requester,
-        Server
-    }
 
     /**
      * gets Senders username, rsa
