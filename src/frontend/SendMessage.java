@@ -27,12 +27,12 @@ public class SendMessage {
 
         System.out.println("send_message: " + sender);
 
-        if (!clients.containsKey(sender.getFingerpring())) {
+        if (!clients.containsKey(sender.getFingerprint())) {
             System.err.println("User does not exist");
             return true;
         }
 
-        Socket activeSocket = clients.get(sender.getFingerpring());
+        Socket activeSocket = clients.get(sender.getFingerprint());
         
         Query query = new Query(false);
         byte[] aes_sender = query.relatedSenderAES(uid, sender.getId());

@@ -35,7 +35,7 @@ public class get_message implements Runnable {
     public get_message(Socket socket, SenderInfo sender, boolean debug) {
         this.debug = debug;
         if (this.debug) {
-            System.out.println("ready to recieved message from: (clientHandler): " + sender.getFingerpring() + ":" + socket.getInetAddress().toString().substring(1));
+            System.out.println("ready to recieved message from: (clientHandler): " + sender.getFingerprint() + ":" + socket.getInetAddress().toString().substring(1));
         }
         this.sender = sender;
         this.socket = socket;

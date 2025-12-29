@@ -207,7 +207,7 @@ public class Query {
             if (sender.setFingerprint()) {
                 return true;
             }
-            stmt.setString(3, sender.getFingerpring());
+            stmt.setString(3, sender.getFingerprint());
             stmt.setBytes(4, sender.getEncryptedAES());
 
             int effectedRow = stmt.executeUpdate();
@@ -343,7 +343,7 @@ public class Query {
                 String public_key = new CryptoRSA().bytePublicKeyToString(rs.getBytes("public_key"));
                 sender = new SenderInfo(username, public_key);
                 sender.setId(sid);
-                sender.setFingerprint(rs.getString("fingerprint"));
+                sender.setFingerprint(rs.getString("fingerprint").trim());
             } else {
                 System.err.println("unable to get info of sender (getSender)"); // TODO: remove the invalid user from database
             }
@@ -362,13 +362,13 @@ public class Query {
 
     // TODO: forgot we have over riding. Make over rided newConversation? or split this method to two. remove state stuff
     public void newConversation(UserInfo user, SenderInfo sender, byte[] aes_user, byte[] aes_sender) {
-        if (!hasSender(sender.getFingerpring())) {
+        if (!hasSender(sender.getFingerprint())) {
             if (saveNewSender(sender)) {
                 System.err.println("failed to save new sender (newConversation)");
             }
         }
 
-        sender = getSender(sender.getFingerpring());
+        sender = getSender(sender.getFingerprint());
 
         try {
             stmt = conn.prepareStatement("INSERT INTO communication_participants(uid, sid, username, aes_user ,aes_sender) values(?,?,?,?,?);");

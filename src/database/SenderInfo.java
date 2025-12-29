@@ -27,9 +27,6 @@ public class SenderInfo {
     }
 
     public boolean setFingerprint() {
-        if (this.PublicKey == null) {
-            return true;
-        }
         CryptoRSA crypt = new CryptoRSA();
         this.md5 = crypt.md5Fingerprint(this.PublicKey);
         return false;
@@ -39,11 +36,9 @@ public class SenderInfo {
         this.md5 = fingerprint;
     }
 
-    public String getFingerpring() {
-        if(PublicKey==null){
-            if(setFingerprint()){
-                return null;
-            }
+    public String getFingerprint() {
+        if(PublicKey!=null){
+            setFingerprint();
         }
         return this.md5;
     }

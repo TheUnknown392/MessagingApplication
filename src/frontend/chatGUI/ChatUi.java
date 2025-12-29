@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package frontend;
+package frontend.chatGUI;
 
 import static frontend.FrameUi.x;
 import static frontend.FrameUi.y;
@@ -20,6 +20,7 @@ import javax.swing.JTextField;
 import database.Query;
 import database.SenderInfo;
 import database.UserInfo;
+import frontend.SendMessage;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
@@ -31,62 +32,68 @@ import javax.swing.JFrame;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 
-
-
 /**
  *
  * @author theunknown
  */
 public class ChatUi {
+
     JFrame frame;
-    UserInfo user;
+    public UserInfo user;
     private Query query = new Query(false);
 
-    protected JTextArea showMessage = null;
-    protected JTextField messageField = null;
-    
-    protected JScrollPane contactScroll = null;
-    protected JScrollPane messageScroll = null;
-    
-    protected JPanel inputPanel = null;
-    
-    protected JButton sendMessage = null;
-    
-    protected JSplitPane splitPane = null;
-    
-    protected DefaultListModel<SenderInfo> contactListModel = null;
-    protected JList<SenderInfo> contactList = null;
+    public ContactUi contactUi = null;
+    public MessageDisplay messageDisplay = null;
+    SendMessage sendmessage = new SendMessage();
 
-    public ChatUi(UserInfo user, JFrame parentFrame){
-        assert user!=null;
+    public JTextField messageField = null;
+
+    public JScrollPane messageScroll = null;
+
+    public JPanel inputPanel = null;
+
+    public JButton sendMessage = null;
+
+    public JSplitPane splitPane = null;
+
+    private SenderInfo selectedSender = null;
+
+    public ChatUi(UserInfo user, JFrame parentFrame) {
+        assert user != null;
         this.frame = parentFrame;
-        
+
         this.user = user;
-        
-        messageField = new JTextField();
+
+        contactUi = new ContactUi(this.query, this.user);
+        messageDisplay = new MessageDisplay();
 
         sendMessage = new JButton("Send");
         sendMessage.setActionCommand("Send_Message");
-        showMessage = new JTextArea();
+        contactUi.contactList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                if (true) {
+                    System.out.println("selected: " + contactUi.getSelectedSender().username);
+                }
+                this.selectedSender = contactUi.getSelectedSender();
+                SwingUtilities.invokeLater(() -> {
+                    messageDisplay.showHistory(selectedSender.getFingerprint());
+                });
+            }
+        });
+
+        messageField = new JTextField();
         inputPanel = new JPanel(new BorderLayout());
-        
-        contactListModel = new DefaultListModel<>();
-        contactList = new JList(contactListModel);
-        contactScroll = new JScrollPane(contactList);
-        
-        showMessage.setEditable(false);
 
         inputPanel.add(messageField, BorderLayout.CENTER);
         inputPanel.add(sendMessage, BorderLayout.EAST);
 
-
         JPanel contactPanel = new JPanel(new BorderLayout());
-        contactPanel.add(contactScroll, BorderLayout.CENTER);
+        contactPanel.add(contactUi.contactScroll, BorderLayout.CENTER);
         JLabel contactTitle = new JLabel("Contacts");
         contactPanel.add(contactTitle, BorderLayout.NORTH);
 
         JPanel messagePanel = new JPanel(new BorderLayout());
-        messageScroll = new JScrollPane(showMessage);
+        messageScroll = new JScrollPane(messageDisplay.showMessage);
         messagePanel.add(messageScroll, BorderLayout.CENTER);
         messagePanel.add(new JLabel("Message"), BorderLayout.NORTH);
         messagePanel.add(inputPanel, BorderLayout.SOUTH);
@@ -95,62 +102,41 @@ public class ChatUi {
         splitPane.setDividerLocation(150);
         splitPane.setLeftComponent(contactPanel);
         splitPane.setRightComponent(messagePanel);
-        
-        contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         sendMessage.addActionListener(new onClick());
-        
-        loadContacts();
+
+        contactUi.loadContacts();
     }
-    
-    private class onClick implements ActionListener{
+
+    private class onClick implements ActionListener {
+
         @Override
         public void actionPerformed(ActionEvent e) {
             String action = e.getActionCommand();
-            switch(action){
-                case "Send_Message":{
+            switch (action) {
+                case "Send_Message": {
                     String unsafeMessage = messageField.getText().trim();
                     System.out.println(unsafeMessage);
-                    if(unsafeMessage.equals("")){
-                       return; 
+                    if (unsafeMessage.equals("")) {
+                        return;
                     }
-                    if(getSelectedSender()==null){
+                    if (contactUi.getSelectedSender() == null) {
                         System.out.println("it's null getSelectedSender()");
                         return;
                     }
-                    SendMessage sendmessage = new SendMessage();
-                    
-                    sendmessage.sendMessage(user.id,getSelectedSender(), unsafeMessage);
-                    SwingUtilities.invokeLater(() -> {
-                        showMessage.append(unsafeMessage+"\n");
-                        showMessage.setCaretPosition(showMessage.getDocument().getLength());
-                    });
+
+                    sendmessage.sendMessage(user.id, selectedSender, unsafeMessage);
+                    System.out.println("The selected sender in actionPerformed: " + selectedSender.getFingerprint());
+                    messageDisplay.appendMessage(selectedSender.getFingerprint(),"You: " + unsafeMessage);
+                    messageDisplay.showHistory(selectedSender.getFingerprint());
                     messageField.setText("");
-                }break;
-                default:{
+                }
+                break;
+                default: {
                     System.err.println("unreachable in ChatUi onClick");
                 }
             }
         }
-    }
-    
-    protected void loadContacts(){
-        contactListModel.clear();
-        List<SenderInfo> contacts = new ArrayList<>(this.query.getContacts(this.user));
-        contacts.forEach((e)->{
-            try {
-                SwingUtilities.invokeAndWait(()->{
-                    contactListModel.addElement(e);
-                });
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ChatUi.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (InvocationTargetException ex) {
-                Logger.getLogger(ChatUi.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        });
-        contactList.setSelectedIndex(0);
-    }
-    
-    public SenderInfo getSelectedSender(){
-        return contactList.getSelectedValue();
     }
 }

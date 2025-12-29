@@ -4,6 +4,7 @@
  */
 package frontend;
 
+import frontend.chatGUI.ChatUi;
 import database.UserInfo;
 import javax.swing.JFrame;
 import java.awt.BorderLayout;
@@ -18,8 +19,8 @@ import main.*;
  */
 public class FrameUi {
     
-    protected static final int x = 800;
-    protected static final int y = 600;
+    public static final int x = 800;
+    public static final int y = 600;
     
     JFrame frame = null;
     protected ChatUi chatUi;
@@ -47,6 +48,6 @@ public class FrameUi {
         
     }
     public void updateContacts(){
-        chatUi.loadContacts();
+        chatUi.contactUi.loadContacts();
     }
 }
