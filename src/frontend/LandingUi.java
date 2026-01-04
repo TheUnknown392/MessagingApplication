@@ -112,7 +112,7 @@ public class LandingUi extends JDialog {
         System.out.println(password);
         
         if(!(cleanUsername(username) && cleanPassword(password))){
-            JOptionPane.showConfirmDialog(this, "username cannot have ':', ' ' character(s) and it cannot be empty", "Dirty input.", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showConfirmDialog(this, "username cannot have ':', ' ' character(s), it cannot be empty and the length should be below 250 characters", "Dirty input.", JOptionPane.ERROR_MESSAGE);
             return false;
         }
 
@@ -150,11 +150,11 @@ public class LandingUi extends JDialog {
     }
     
     private boolean cleanUsername(String username){
-        return !(username.contains(":") || username.contains(" ") || username.equals(""));
+        return (!username.contains(":") || !username.contains(" ") || !username.equals("") || username.length()<=250);
     }
     
     private boolean cleanPassword(String password){
-        return !username.equals("");
+        return !password.equals("");
     }
     
 }

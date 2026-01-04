@@ -53,22 +53,40 @@ public class ChatUi {
     public JPanel inputPanel = null;
 
     public JButton sendMessage = null;
+    
+    public JButton addContacts = null;
 
     public JSplitPane splitPane = null;
 
     private SenderInfo selectedSender = null;
+    
+    private OnClick onClickListener = null;
+    
+    private void setProperties(UserInfo user, JFrame parentFrame){
+        this.frame = parentFrame;
+        this.user = user;
+        this.contactUi       = new ContactUi(this.query, this.user);
+        this.sendMessage     = new JButton("Send");
+        this.addContacts     = new JButton("Add Contacts");
+        this.messageDisplay  = new MessageDisplay();
+        this.messageField    = new JTextField();
+        this.inputPanel      = new JPanel(new BorderLayout());
+        this.messageScroll   = new JScrollPane(messageDisplay.showMessage);
+        this.onClickListener = new OnClick();
+        this.splitPane       = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+    }
 
     public ChatUi(UserInfo user, JFrame parentFrame) {
         assert user != null;
-        this.frame = parentFrame;
-
-        this.user = user;
-
-        contactUi = new ContactUi(this.query, this.user);
-        messageDisplay = new MessageDisplay();
-
-        sendMessage = new JButton("Send");
+        
+        
+        setProperties(user, parentFrame);
+        
+        // listeners
         sendMessage.setActionCommand("Send_Message");
+        addContacts.setActionCommand("Add_Contacts");
+        sendMessage.addActionListener(onClickListener);
+        addContacts.addActionListener(onClickListener);
         contactUi.contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 if (true) {
@@ -81,35 +99,32 @@ public class ChatUi {
             }
         });
 
-        messageField = new JTextField();
-        inputPanel = new JPanel(new BorderLayout());
-
+        // inputPane
         inputPanel.add(messageField, BorderLayout.CENTER);
         inputPanel.add(sendMessage, BorderLayout.EAST);
-
+        // contactPane
         JPanel contactPanel = new JPanel(new BorderLayout());
-        contactPanel.add(contactUi.contactScroll, BorderLayout.CENTER);
         JLabel contactTitle = new JLabel("Contacts");
+        contactPanel.add(contactUi.contactScroll, BorderLayout.CENTER);
         contactPanel.add(contactTitle, BorderLayout.NORTH);
-
+        contactPanel.add(addContacts,BorderLayout.SOUTH);
+        // messagePane
         JPanel messagePanel = new JPanel(new BorderLayout());
-        messageScroll = new JScrollPane(messageDisplay.showMessage);
-        messagePanel.add(messageScroll, BorderLayout.CENTER);
         messagePanel.add(new JLabel("Message"), BorderLayout.NORTH);
+        messagePanel.add(messageScroll, BorderLayout.CENTER);
         messagePanel.add(inputPanel, BorderLayout.SOUTH);
-
-        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        // splipPane
         splitPane.setDividerLocation(150);
         splitPane.setLeftComponent(contactPanel);
         splitPane.setRightComponent(messagePanel);
-
+       
         contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        sendMessage.addActionListener(new onClick());
+        
 
         contactUi.loadContacts();
     }
-
-    private class onClick implements ActionListener {
+    
+    private class OnClick implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -131,6 +146,10 @@ public class ChatUi {
                     messageDisplay.appendMessage(selectedSender.getFingerprint(),"You: " + unsafeMessage);
                     messageDisplay.showHistory(selectedSender.getFingerprint());
                     messageField.setText("");
+                }
+                break;
+                case "Add_Contacts": {
+                    System.out.println("TODO: Adding new contacts through GUI");
                 }
                 break;
                 default: {

@@ -3,7 +3,6 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ChatUi.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/LandingUi.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/FrameUi.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ContactUi.java</file>
@@ -18,6 +17,10 @@
             <file>file:/home/theunknown/Git/MessagingApplication/src/database/Query.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestInformation.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/StatusUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ChatUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/DatabaseInfo.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/UserInfo.java</file>
         </group>
     </open-files>
 </project-private>

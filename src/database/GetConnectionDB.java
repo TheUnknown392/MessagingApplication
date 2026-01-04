@@ -51,26 +51,33 @@ public class GetConnectionDB {
      * @return 
      */
     public Connection getConnection(){
+        boolean isMariadb = true;
         // Connect to MySQL server
         String serverUrl = "jdbc:mariadb://" + dbhost + ":" + dbport + "/?useSSL=false&serverTimezone=UTC";
         try {
             this.conn = DriverManager.getConnection(serverUrl, dbuser, dbpassword);
-        } catch (SQLException e) {
-            System.out.println("cannot get connection to server:"+e.getMessage());
-            System.exit(101);
+        }catch (SQLException e) {
+            try{
+                serverUrl = new String("jdbc:mysql://" + dbhost + ":" + dbport + "/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
+                this.conn = DriverManager.getConnection(serverUrl, dbuser, dbpassword);
+                isMariadb = false;
+            }catch(SQLException ex){
+                System.out.println("cannot get connection to server:"+e.getMessage());
+                System.exit(101);
+            }
         }
-
-        // Create the database if it doesn't exist
+ 
+       // Create the database if it doesn't exist
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
                     + " CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
-          //  System.out.println("Database created or already exists: " + dbName);
         }catch(SQLException e){
             System.out.println("cannot create database"+e.getMessage());
         }
 
-        // Connect to the database
-        String urlToDb = "jdbc:mariadb://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&serverTimezone=UTC";
+//         Connect to the database
+        String urlToDb = isMariadb ? "jdbc:mariadb://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&serverTimezone=UTC"
+                                   : "jdbc:mysql://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" ;
         try {
             conn = DriverManager.getConnection(urlToDb, dbuser, dbpassword);
         } catch (SQLException e) {
@@ -81,8 +88,8 @@ public class GetConnectionDB {
         // Create all tables
         createUsersTable();
         createSendersTable();
-        createCommunicationParticipantsTable();
         createCypherMessagesTable();
+        createCommunicationParticipantsTable();
         if(this.debug){
             System.out.println("All tables created or already exist.");
         }
@@ -92,7 +99,7 @@ public class GetConnectionDB {
     private void createUsersTable(){
         String sql = "CREATE TABLE IF NOT EXISTS users ("
                 + "uid BIGINT PRIMARY KEY AUTO_INCREMENT,"
-                + "username TEXT NOT NULL UNIQUE,"
+                + "username varchar(255) NOT NULL UNIQUE,"
                 + "password_hashed VARBINARY(75) NOT NULL UNIQUE,"
                 + "salt VARBINARY(20) NOT NULL,"
                 + "public_key VARBINARY(600),"
