@@ -90,7 +90,9 @@ public class ChatUi {
         contactUi.contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 if (true) {
-                    System.out.println("selected: " + contactUi.getSelectedSender().username);
+                    if(contactUi.getSelectedSender().username != null){
+                        System.out.println("selected: " + contactUi.getSelectedSender().username);
+                    }
                 }
                 this.selectedSender = contactUi.getSelectedSender();
                 SwingUtilities.invokeLater(() -> {
@@ -149,7 +151,8 @@ public class ChatUi {
                 }
                 break;
                 case "Add_Contacts": {
-                    System.out.println("TODO: Adding new contacts through GUI");
+                    System.out.println("TODO: Adding new contacts through GUI. Incomplete");
+                    new NewContactUi(user);
                 }
                 break;
                 default: {

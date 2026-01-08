@@ -14,13 +14,16 @@
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/Message.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/get_message.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/ConnectionKey.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/Query.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestInformation.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/StatusUi.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ChatUi.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/database/DatabaseInfo.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/database/GetConnectionDB.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/database/UserInfo.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoPassword.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoMessage.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/Query.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/NewContactUi.java</file>
         </group>
     </open-files>
 </project-private>

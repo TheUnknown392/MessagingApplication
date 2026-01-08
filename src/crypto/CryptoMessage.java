@@ -4,6 +4,7 @@
  */
 package crypto;
 
+import database.Query;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,7 +35,7 @@ import javax.crypto.AEADBadTagException;
  */
 public class CryptoMessage {
 
-    private static final int AES_LEN = 128;
+    private static final int GCM_LEN = 128;
     private boolean debug;
 
     public CryptoMessage(boolean debug) {
@@ -83,7 +84,7 @@ public class CryptoMessage {
         SecretKeyFactory factory;
         try {
             factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, AES_LEN);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, GCM_LEN);
 
             try {
                 if (debug) {
@@ -117,7 +118,7 @@ public class CryptoMessage {
     public byte[] getAESKeyBytesFromPassword(String password, byte[] salt) {
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, AES_LEN);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 310_000, GCM_LEN);
 
             try {
                 if (debug) {
@@ -196,7 +197,7 @@ public class CryptoMessage {
             byte[] iv = generateIV();
             SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, iv);  
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_LEN, iv);
             cipher.init(Cipher.ENCRYPT_MODE, aesKey, gcmSpec);
 
             byte[] cipherText = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
@@ -222,32 +223,48 @@ public class CryptoMessage {
     public static String decryptMessage(String base64Combined, byte[] aesKeyBytes) {
         try {
             byte[] combined = Base64.getDecoder().decode(base64Combined);
-            SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+            SecretKeySpec aesKey = new SecretKeySpec(aesKeyBytes, "AES");
 
             int ivLength = 12;
             byte[] iv = new byte[ivLength];
             byte[] cipherText = new byte[combined.length - ivLength];
 
-            
             System.arraycopy(combined, 0, cipherText, 0, cipherText.length);
             System.arraycopy(combined, cipherText.length, iv, 0, ivLength);
 
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(AES_LEN, iv);  
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_LEN, iv);
             cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
 
             byte[] plainBytes = cipher.doFinal(cipherText);
             return new String(plainBytes, StandardCharsets.UTF_8);
-
-        } catch (AEADBadTagException ex) {
-         
-            System.err.println("decryption failed bad tag exception");
-            Logger.getLogger(CryptoMessage.class.getName()).log(Level.WARNING, "AEADBadTagException", ex);
         } catch (Exception ex) {
-            System.err.println("decryption failed exception: ");
             Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
         }
-        return null;
     }
+    
+    public static String decryptMessage(byte[] iv, byte[] byteSeperatedMessage, byte[] aesKeyBytes) {
+        try {
+            SecretKeySpec aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_LEN, iv);
 
+            cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+            byte[] plainBytes = cipher.doFinal(byteSeperatedMessage);
+            return new String(plainBytes, StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            Logger.getLogger(CryptoMessage.class.getName()).log(Level.SEVERE, "Decryption failed", ex);
+            return null;
+        }
+    }
+    
+    /**
+     * To clean raw AES collected from socket
+     * @param rawAes
+     * @return 
+     */
+    public static byte[] safeBase64Decode(String rawAes) {
+        return Base64.getDecoder().decode(rawAes.trim().replaceAll("[\\r\\n]", ""));
+    }
 }

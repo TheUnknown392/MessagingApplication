@@ -19,7 +19,6 @@ public class MessageManager implements Runnable {
 
     FrameUi frame = null;
     UserInfo user = null;
-    private CryptoMessage crypto = new CryptoMessage();
     private Query query = new Query(false);
 
     public MessageManager(FrameUi frame, UserInfo user) {
@@ -29,7 +28,7 @@ public class MessageManager implements Runnable {
     }
     
     protected boolean saveRecievedMessage(Message message){
-        if(query.saveIncommingEncryptedMessage(message, user)){
+        if(query.saveIncomingEncryptedMessage(message, user)){
             System.err.println("couldn't save. saveRecievedMessage, MessageManager");
             return true;
         }

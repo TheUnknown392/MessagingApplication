@@ -23,9 +23,9 @@ public class Main {
 
     Boolean debug = false;
 
-    String PREFIX_CONNECT = "CONNECT:";
-    String PREFIX_REQUEST_INFORMATION = "REQUEST:";
-    String PREFIX_REPLY_INFORMATION = "REPLY:";
+    public static final String PREFIX_CONNECT = "CONNECT:";
+    public static final String PREFIX_REQUEST_INFORMATION = "REQUEST:";
+    public static final String PREFIX_REPLY_INFORMATION = "REPLY:";
 
     protected static Boolean EXIT = false;
 
@@ -35,16 +35,16 @@ public class Main {
     // list of clients who aren't in our database
     protected static ConcurrentHashMap<String, Long> unknownConnection = new ConcurrentHashMap<>();
     public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
-    private static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
+    protected static final long CONNECT_COOLDOWN_MS = 30000; // 30s cooldown
+    // TODO: make ports increment if port buisy
+    protected static final int port = 9332;
+    protected static final int portAsk = port + 1; // convention?
 
     FrameUi gui = null;
     public UserInfo user = null;
 
-    private String Broadcast_id;
-    private int udp_port;
-    // TODO: make ports increment if port buisy
-    private final int port = 9332;
-    private final int portAsk = port + 1; // convention?
+    protected String Broadcast_id;
+    protected int udp_port;
 
     public Main(String BroadcastID, int udp_port) {
         this.Broadcast_id = BroadcastID;
@@ -209,69 +209,78 @@ public class Main {
         BufferedReader reader = null;
         try {
             System.out.println("Server listening on: " + portAsk);
-            askServer = new ServerSocket(portAsk);
-            askServer.setSoTimeout((int) CONNECT_COOLDOWN_MS);
-            socket = askServer.accept();
-            System.out.println("conntected to : " + socket.getInetAddress().getHostAddress());
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            String peerIdentity = in.readLine();
+            for (;;) {
+                askServer = new ServerSocket(portAsk);
+                askServer.setSoTimeout((int) CONNECT_COOLDOWN_MS);
+                socket = askServer.accept();
+                System.out.println("conntected to : " + socket.getInetAddress().getHostAddress());
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String peerIdentity = in.readLine();
 
-            if (!peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
-                return;
+                if (!peerIdentity.startsWith(PREFIX_REQUEST_INFORMATION)) {
+                    socket.close();
+                    return;
+                }
+
+                RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
+                System.out.println("Request by: " + request); // TODO: some abstraction/polymorphism?
+
+                writer = new PrintWriter(socket.getOutputStream(), true);
+                reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                String choice = scan.nextLine().toLowerCase();
+                if (!(choice.equals("y") || choice.equals("yes"))) {
+                    writer.println("REJECTED:");
+                    socket.close();
+                    return;
+                }
+
+                String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
+                System.out.println("key: " + key);
+                ConnectionKey unknownClient = new ConnectionKey(key, PREFIX_CONNECT);
+
+                // TODO: make this part a method of itself.
+                CryptoMessage crypt = new CryptoMessage(false);
+                byte[] salt = crypt.generateSalt();
+                byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
+
+                String encrypted_aes_user = CryptoRSA.encrypt(CryptoRSA.getPublicKeyFromString(request.publicKey), aes_user);
+
+                String senderReply = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + encrypted_aes_user;
+                System.out.println("from newSenderInPermission: " + senderReply);
+                writer.println(senderReply); // send our aes key
+
+                String reply = null;
+                while (reply == null) {
+                    reply = reader.readLine(); // get their aes key
+                }
+
+                if (reply.equals("FAILED:")) {
+                    System.out.println("Failed by client");
+                    socket.close();
+                    return;
+                }
+
+                NewConnectionAccepted sucessfull = new NewConnectionAccepted(reply, PREFIX_REPLY_INFORMATION);
+                byte[] encrypted_aes_sender = CryptoMessage.safeBase64Decode(sucessfull.AES);
+
+                PrivateKey privateKey = CryptoRSA.loadPrivateKeyFromFile(this.user.getUsername());
+                System.out.println("Encrypted AES key from newSenderInPermission: " + sucessfull.AES);
+                System.out.println("Generated by newSenderInPermission: " + encrypted_aes_user);
+                byte[] aes_sender = CryptoRSA.decrypt(privateKey, encrypted_aes_sender);
+                if (aes_sender == null) {
+                    System.out.println("decryption failed");
+                    writer.println("FAILED:");
+                    socket.close();
+                    return;
+                }
+                writer.println(sucessfull.toString()); // sending random information that is not "FAILED:"
+
+                System.out.println("Reply: " + sucessfull.toString());
+                saveSenderInfo(sucessfull.username, sucessfull.publicKey, unknownClient, aes_user, aes_sender);
+                unknownConnection.remove(unknownClient);
+                socket.close();
             }
-            
-            RequestInformation request = new RequestInformation(peerIdentity, PREFIX_REQUEST_INFORMATION);
-            System.out.println("Request by: " + request); // TODO: some abstraction/polymorphism?
-
-            writer = new PrintWriter(socket.getOutputStream(), true);
-            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            String choice = scan.nextLine().toLowerCase();
-            if (!(choice.equals("y") || choice.equals("yes"))) {
-                writer.println("REJECTED:");
-                return;
-            }
-
-            String key = CryptoRSA.md5Fingerprint(request.publicKey) + ":" + request.ip + ":" + request.port;
-            System.out.println("key: " + key);
-            ConnectionKey unknownClient = new ConnectionKey(key, PREFIX_CONNECT);
-
-            // TODO: make this part a method of itself.
-            CryptoMessage crypt = new CryptoMessage(false);
-            byte[] salt = crypt.generateSalt();
-            byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
-            
-            String encrypted_aes_user = CryptoRSA.encrypt(CryptoRSA.getPublicKeyFromString(request.publicKey), aes_user);
-
-            String senderReply = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + encrypted_aes_user;
-            System.out.println("from newSenderInPermission: " + senderReply);
-            writer.println(senderReply); // send our aes key
-            
-            String reply =  null;
-            while(reply == null){
-                reply = reader.readLine(); // get their aes key
-            }
-            
-            if(reply.equals("FAILED:")){
-                System.out.println("Failed by client");
-                return;
-            }
-            
-            NewConnectionAccepted sucessfull = new NewConnectionAccepted(reply, PREFIX_REPLY_INFORMATION);
-            byte[] encrypted_aes_sender = Base64.getDecoder().decode(sucessfull.AES);
-            
-            PrivateKey privateKey = CryptoRSA.loadPrivateKeyFromFile(this.user.getUsername());
-            byte[] aes_sender = CryptoRSA.decrypt(privateKey, encrypted_aes_sender);
-            if (aes_sender == null) {
-                System.out.println("decryption failed");
-                writer.println("FAILED:");
-                return;
-            }
-            writer.println(sucessfull.toString()); // sending random information that is not "FAILED:"
-            
-            System.out.println("Reply: " + sucessfull.toString());
-            saveSenderInfo(sucessfull.username, sucessfull.publicKey, unknownClient, aes_user, aes_sender);
-            unknownConnection.remove(unknownClient);
         } catch (SocketTimeoutException e) {
             System.out.println("Timeout");
         } catch (ConnectException e) {
@@ -527,7 +536,6 @@ public class Main {
         return Base64.getEncoder().encodeToString(aes_user);
     }
 
-
     /**
      * gets Senders username, rsa
      *
@@ -552,8 +560,8 @@ public class Main {
             host.connect(new InetSocketAddress(senderConnectionKey.ip, peerServerPort), (int) CONNECT_COOLDOWN_MS);
             System.out.println(host.getInetAddress().getHostAddress());
 
-            //TODO: be more consistent with RequestInformation. Correct having to put empty space " "
-            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + " " + ":"+ getLocalIp() + ":" + this.port;
+            //TODO: be more consistent with RequestInformation. Correct having to put empty space "ignored"
+            String requestKey = PREFIX_REQUEST_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + "ignored" + ":" + getLocalIp() + ":" + this.port;
 
             writer = new PrintWriter(host.getOutputStream(), true);
             reader = new BufferedReader(new InputStreamReader(host.getInputStream()));
@@ -566,20 +574,20 @@ public class Main {
             if (!host.isConnected()) {
                 return;
             }
-            
+
             String senderReply = reader.readLine();
             if (senderReply.equals("REJECTED:")) {
                 System.out.println("request rejected string senderReply < getSenderInfo");
                 return;
             }
-            
+
             // get the aes key
             NewConnectionAccepted newConnection = new NewConnectionAccepted(senderReply, PREFIX_REPLY_INFORMATION);
             System.out.println("from getSenderInfo: " + senderReply);
-            
-            //decode
-            byte[] encrypted_aes_sender = Base64.getDecoder().decode(newConnection.AES);
 
+            //decode
+            byte[] encrypted_aes_sender = CryptoMessage.safeBase64Decode(newConnection.AES);
+            System.out.println("Encrypted AES key from getSenderInfo: " + newConnection.AES);
             PrivateKey privateKey = CryptoRSA.loadPrivateKeyFromFile(this.user.getUsername());
             byte[] aes_sender = CryptoRSA.decrypt(privateKey, encrypted_aes_sender); // we have their aes key
             if (aes_sender == null) {
@@ -587,23 +595,24 @@ public class Main {
                 writer.println("FAILED:");
                 return;
             }
-            
+
             CryptoMessage crypt = new CryptoMessage(false);
             byte[] salt = crypt.generateSalt();
             byte[] aes_user = crypt.getAESKeyBytesFromPassword(this.user.getPasswordHashed().toString(), salt);
-            
+
             String encrypted_aes_user = CryptoRSA.encrypt(CryptoRSA.getPublicKeyFromString(newConnection.publicKey), aes_user);
-            
+
             String accepted_request_key = PREFIX_REPLY_INFORMATION + user.username + ":" + CryptoRSA.bytePublicKeyToString(user.getPublicKey()) + ":" + encrypted_aes_user;
-            
+            System.out.println("Generatetd by getSenderInfo: " + encrypted_aes_user);
+
             writer.println(accepted_request_key);
             String reply = reader.readLine();// send our aes key to them
-            
-            if(reply.equals("FAILED:")){
+
+            if (reply.equals("FAILED:")) {
                 System.out.println("request rejected string reply < getSenderInfo");
                 return;
             }
-            
+
             System.out.println("Reply: " + newConnection); // if sucessfull we save it
             saveSenderInfo(newConnection.username, newConnection.publicKey, senderConnectionKey, aes_user, aes_sender);
             unknownConnection.remove(senderConnectionKey);

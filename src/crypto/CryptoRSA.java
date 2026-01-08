@@ -2,13 +2,11 @@ package crypto;
 
 import database.UserInfo;
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -63,12 +61,12 @@ public class CryptoRSA {
         // TODO: make a folder to store key of different users
         String filePath = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
 
-        BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
-        writer.write(privateKeyToString(key.getPrivate()));
-        writer.close();
+        // FIXED: Save raw PKCS#8 bytes directly, not Base64 string
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(key.getPrivate().getEncoded());
+        }
 
         user.setPublicKey(key.getPublic().getEncoded());
-
     }
 
     /**
@@ -196,15 +194,19 @@ public class CryptoRSA {
         if (!inFile.exists()) {
             return null;
         }
-        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); 
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int read;
             while ((read = bin.read(buffer)) != -1) {
                 baos.write(buffer, 0, read);
             }
-            String b64 = baos.toString();
-            return getPublicKeyFromString(b64.trim());
-        } catch (IOException ex) {
+            // FIXED: Use raw bytes directly for X509
+            byte[] keyBytes = baos.toByteArray();
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
+            return keyFactory.generatePublic(spec);
+        } catch (Exception ex) {
             Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
@@ -220,20 +222,22 @@ public class CryptoRSA {
         String location = System.getProperty("user.home") + "/." + "messagingAppication" + username + ".key";
         File inFile = new File(location);
         if (!inFile.exists()) {
-            if (true) {
-                System.out.println("File does not exist.");
-            }
+            System.out.println("File does not exist: " + location);
             return null;
         }
-        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(inFile)); 
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[4096];
             int read;
             while ((read = bin.read(buffer)) != -1) {
                 baos.write(buffer, 0, read);
             }
-            String b64 = baos.toString();
-            return getPrivateKeyFromString(b64.trim());
-        } catch (IOException ex) {
+            // FIXED: Use raw PKCS#8 bytes directly, no String conversion
+            byte[] privateKeyBytes = baos.toByteArray();
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
+            return keyFactory.generatePrivate(spec);
+        } catch (Exception ex) {
             Logger.getLogger(CryptoRSA.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }

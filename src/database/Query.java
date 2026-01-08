@@ -500,42 +500,89 @@ public class Query {
         return contacts;
     }
 
-    public boolean saveIncommingEncryptedMessage(Message messageInfo, UserInfo user) {
-        SenderInfo sender = messageInfo.getSenderInfo();
-        String encrypted = messageInfo.getEncryptedMessage();
-
+    public boolean saveIncomingEncryptedMessage(Message messageInfo, UserInfo user) {
+        PreparedStatement stmt = null;
         try {
-            byte[] combined = Base64.getDecoder().decode(encrypted);
+            byte[] combined = Base64.getDecoder().decode(messageInfo.getEncryptedMessage());
             int ivLength = 12;
-            byte[] ciphertext = new byte[combined.length - ivLength];
+
+            // Validate input length
+            if (combined.length < ivLength) {
+                System.err.println("Invalid encrypted message length");
+                return true;
+            }
+
             byte[] iv = new byte[ivLength];
+            byte[] ciphertext = new byte[combined.length - ivLength];
 
-            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);
-            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);
+            System.arraycopy(combined, 0, iv, 0, ivLength);
+            System.arraycopy(combined, ivLength, ciphertext, 0, ciphertext.length);
 
-            stmt = conn.prepareStatement("INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state,sender) VALUES (?,?, ?, ?, ?, 0)");
-            stmt.setInt(1, user.getId());           
-            stmt.setInt(2, sender.getId());         
-            stmt.setBytes(3, ciphertext);           
-            stmt.setBytes(4, iv); 
-            stmt.setBoolean(5, false);
+            stmt = conn.prepareStatement(
+                    "INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state, sender) "
+                    + "VALUES (?, ?, ?, ?, 0, 0)"
+            );
+            stmt.setInt(1, user.getId());
+            stmt.setInt(2, messageInfo.getSenderInfo().getId());
+            stmt.setBytes(3, ciphertext);
+            stmt.setBytes(4, iv);
 
             int affectedRows = stmt.executeUpdate();
-            if (affectedRows != 1) {
-                System.err.println("Error storing message. Affected rows: " + affectedRows);
-            }
-            return false;
+            return affectedRows != 1;
+
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.WARNING, "Invalid encrypted message", ex);
+            return true;
         } finally {
-            try {
-                if (stmt != null) {
+            if (stmt != null) {
+                try {
                     stmt.close();
+                } catch (SQLException ex) {
+                    Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
                 }
-            } catch (SQLException ex) {
-                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        return true;
     }
+
+    public boolean saveOutgoingEncryptedMessage(SenderInfo sender, String encryptedMessage, int uid) {
+        PreparedStatement stmt = null;
+        try {
+            byte[] combined = Base64.getDecoder().decode(encryptedMessage);
+            int ivLength = 12;
+
+            if (combined.length < ivLength) {
+                return true;
+            }
+
+            byte[] iv = new byte[ivLength];
+            byte[] ciphertext = new byte[combined.length - ivLength];
+
+
+            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);    
+            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);       
+
+            stmt = conn.prepareStatement(
+                    "INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state, sender) "
+                    + "VALUES (?, ?, ?, ?, 0, 1)"
+            );
+            stmt.setInt(1, uid);
+            stmt.setInt(2, sender.getId());
+            stmt.setBytes(3, ciphertext);
+            stmt.setBytes(4, iv);
+
+            return stmt.executeUpdate() != 1;
+        } catch (Exception ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            return true;
+        } finally {
+            if (stmt != null) try {
+                stmt.close();
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
 }

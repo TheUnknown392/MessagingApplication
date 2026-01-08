@@ -79,6 +79,7 @@ public class GetConnectionDB {
         String urlToDb = isMariadb ? "jdbc:mariadb://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&serverTimezone=UTC"
                                    : "jdbc:mysql://" + dbhost + ":" + dbport + "/" + dbName + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" ;
         try {
+            conn.close();
             conn = DriverManager.getConnection(urlToDb, dbuser, dbpassword);
         } catch (SQLException e) {
             System.out.println("Cannnot connect to the database:"+e.getMessage());

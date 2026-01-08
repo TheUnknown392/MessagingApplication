@@ -18,7 +18,6 @@ import static main.Main.clients;
  * @author theunknown
  */
 public class SendMessage {
-//CryptoMessage crypto = new CryptoMessage();
     public boolean sendMessage(int uid,SenderInfo sender, String message) {
         // TODO: properly handel the END_MESSAGE
         final String END_MESSAGE = ":END_OF_MESSAGE:";
@@ -28,20 +27,21 @@ public class SendMessage {
         System.out.println("send_message: " + sender);
 
         if (!clients.containsKey(sender.getFingerprint())) {
-            System.err.println("User does not exist");
+            System.out.println("User does not exist.");
             return true;
         }
 
         Socket activeSocket = clients.get(sender.getFingerprint());
         
-        Query query = new Query(false);
+        Query query = new Query(false); // starting a new query for each message can be slow
         byte[] aes_sender = query.relatedSenderAES(uid, sender.getId());
-        query.closeConnection();
         String encryptedMessage = CryptoMessage.encryptMessage(message, aes_sender);
-
+//            public boolean saveOutgoingEncryptedMessage(SenderInfo sender, String encryptedMessage, int uid)
+        query.saveOutgoingEncryptedMessage(sender, encryptedMessage, uid);
+//        System.out.println("aes Length: " + aes_sender.length);
+        query.closeConnection();
         try {
             PrintWriter writer = new PrintWriter(activeSocket.getOutputStream(), true);
-//            EncryptedMessage crypto.encryptMessage(message, );
             writer.println(encryptedMessage);
             writer.println(END_MESSAGE);
         } catch (IOException e) {
