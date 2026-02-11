@@ -37,8 +37,10 @@ public class ContactUi {
     private Query query = null;
     private UserInfo user = null;
     private SenderInfo sender = null;
+    private ChatUi chatUi = null;
 
-    public ContactUi(Query query, UserInfo user) {
+    public ContactUi(Query query, UserInfo user, ChatUi chatUi) {
+        this.chatUi = chatUi;
         contactListModel = new DefaultListModel<>();
         contactList = new JList(contactListModel);
         contactScroll = new JScrollPane(contactList);
@@ -79,18 +81,17 @@ public class ContactUi {
     private void installPopupMenu() {
 
         JMenuItem renameChat = new JMenuItem("Rename");
-        JMenuItem deleteChat = new JMenuItem("Delete conversation");
+        JMenuItem deleteChat = new JMenuItem("Delete Messages");
 
         popupMenu.add(renameChat);
         popupMenu.add(deleteChat);
 
-        // Action listener for Rename
         renameChat.addActionListener(ev -> {
             if (sender == null) {
                 return;
             }
 
-            String nickname = JOptionPane.showInputDialog(popupMenu,"Username:",sender.username);
+            String nickname = JOptionPane.showInputDialog(popupMenu, "Username:", sender.username);
 
             if (nickname != null && !nickname.trim().isEmpty()) {
                 System.out.println("Trying to change username of " + sender.username + " to " + nickname);
@@ -102,16 +103,22 @@ public class ContactUi {
                 loadContacts();
             }
         });
+        
         deleteChat.addActionListener(ev -> {
             if (sender == null) {
                 return;
             }
-            // TODO: System.out.println("Delete chat with: " + sender.getUsername());
+            int choice = JOptionPane.showConfirmDialog(renameChat, "Do you reall want to delete message of" + sender.nickname + " (" + sender.username + "). This will delete all messages too.", "Confirm Delete?", JOptionPane.WARNING_MESSAGE);
+            if (choice == JOptionPane.YES_OPTION) {
+                Query temp = new Query(false);
+                temp.deleteMessages(user, sender);
+                temp.closeConnection();
+                chatUi.messageDisplay.deleteHistory(sender.getFingerprint());
+
+                loadContacts();
+            }
         });
-        
-        
-        
-        
+
         contactList.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) {

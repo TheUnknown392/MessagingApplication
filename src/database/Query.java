@@ -259,8 +259,8 @@ public class Query {
             stmt.setInt(3, senderInfo.getId());
 
             int result = stmt.executeUpdate();
-            if (result==0) {
-                System.err.println("unable to change sender username (changeUsername)"); 
+            if (result == 0) {
+                System.err.println("unable to change sender username (changeUsername)");
                 return false;
             }
         } catch (SQLException ex) {
@@ -620,6 +620,33 @@ public class Query {
             if (stmt != null) try {
                 stmt.close();
             } catch (SQLException ignored) {
+            }
+        }
+    }
+
+    public boolean deleteMessages(UserInfo user, SenderInfo sender) {
+        PreparedStatement stmt = null;
+        try {
+            stmt = conn.prepareStatement("DELETE FROM cypher_messages where uid = ? AND sid = ?");
+            stmt.setInt(1, user.getId());
+            stmt.setInt(2, sender.getId());
+
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows != 1;
+
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.WARNING, "Invalid Request", ex);
+            return true;
+        } finally {
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException ex) {
+                    Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
     }

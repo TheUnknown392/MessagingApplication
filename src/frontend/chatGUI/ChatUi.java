@@ -65,7 +65,7 @@ public class ChatUi {
     private void setProperties(UserInfo user, JFrame parentFrame){
         this.frame = parentFrame;
         this.user = user;
-        this.contactUi       = new ContactUi(this.query, this.user);
+        this.contactUi       = new ContactUi(this.query, this.user, this);
         this.sendMessage     = new JButton("Send");
         this.addContacts     = new JButton("Add Contacts");
         this.messageDisplay  = new MessageDisplay();
@@ -125,7 +125,7 @@ public class ChatUi {
 
         contactUi.loadContacts();
     }
-    
+ 
     private class OnClick implements ActionListener {
 
         @Override

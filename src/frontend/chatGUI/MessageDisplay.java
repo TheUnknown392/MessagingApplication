@@ -39,4 +39,7 @@ public class MessageDisplay {
             showHistory(md5);
         }
     }
+    public void deleteHistory(String md5){
+        messageHistories.put(md5, new StringBuilder(""));
+    }
 }
