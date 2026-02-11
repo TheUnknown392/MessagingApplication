@@ -49,7 +49,7 @@ public class MessageManager implements Runnable {
                     String decrypted= CryptoMessage.decryptMessage(message.getEncryptedMessage(), aesKeyBytes);
                     SwingUtilities.invokeLater(() -> {
                         System.out.println("The selected sender in MessageManager: " + message.getSenderInfo().getFingerprint());
-                        frame.chatUi.contactUi.
+                        frame.chatUi.contactUi.messageIncomming(message.getSenderInfo());
                         frame.chatUi.messageDisplay.appendMessage(message.getSenderInfo().getFingerprint(),message.getSenderInfo().username +": "+decrypted.replace("//n", "\n"));
                         frame.chatUi.messageDisplay.updateIfSelected(message.getSenderInfo().getFingerprint());
 //                        frame.chatUi.messageDisplay.showHistory(message.getSenderInfo().getFingerprint());

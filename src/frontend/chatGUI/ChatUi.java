@@ -148,6 +148,7 @@ public class ChatUi {
                     messageDisplay.appendMessage(selectedSender.getFingerprint(),"You: " + unsafeMessage);
                     messageDisplay.showHistory(selectedSender.getFingerprint());
                     messageField.setText("");
+                    contactUi.messageRead(selectedSender);
                 }
                 break;
                 case "Add_Contacts": {

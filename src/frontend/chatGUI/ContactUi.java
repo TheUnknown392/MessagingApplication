@@ -7,6 +7,7 @@ package frontend.chatGUI;
 import database.Query;
 import database.SenderInfo;
 import database.UserInfo;
+import java.awt.Color;
 import java.lang.reflect.InvocationTargetException;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -39,6 +40,10 @@ public class ContactUi {
     private SenderInfo sender = null;
     private ChatUi chatUi = null;
 
+    private ArrayList<String> unRead = new ArrayList<>();
+
+    Object lock = new Object();
+
     public ContactUi(Query query, UserInfo user, ChatUi chatUi) {
         this.chatUi = chatUi;
         contactListModel = new DefaultListModel<>();
@@ -47,6 +52,23 @@ public class ContactUi {
         this.query = query;
         this.user = user;
         installPopupMenu();
+
+        contactList.setCellRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            javax.swing.JLabel label = new javax.swing.JLabel();
+            label.setOpaque(true);
+            label.setText(value.nickname);
+
+            if (unRead.contains(value.getFingerprint())) {
+                label.setBackground(Color.GREEN);
+            } else {
+                label.setBackground(list.getBackground());
+            }
+
+            if (isSelected) {
+                label.setBackground(Color.GRAY);
+            }
+            return label;
+        });
     }
 
     public void loadContacts() {
@@ -78,6 +100,26 @@ public class ContactUi {
         return senderInfo;
     }
 
+    public void messageIncomming(SenderInfo sender) {
+        if (sender == null) {
+            return;
+        }
+        synchronized (lock) {
+            unRead.add(sender.getFingerprint());
+        }
+        contactList.repaint();
+    }
+
+    public void messageRead(SenderInfo sender) {
+        if (sender == null) {
+            return;
+        }
+        synchronized (lock) {
+            unRead.remove(sender.getFingerprint());
+        }
+        contactList.repaint();
+    }
+
     private void installPopupMenu() {
 
         JMenuItem renameChat = new JMenuItem("Rename");
@@ -103,7 +145,7 @@ public class ContactUi {
                 loadContacts();
             }
         });
-        
+
         deleteChat.addActionListener(ev -> {
             if (sender == null) {
                 return;
@@ -119,22 +161,22 @@ public class ContactUi {
             }
         });
 
-        contactList.addMouseListener(new java.awt.event.MouseAdapter() {
+        contactList.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     showMenu(e);
                 }
             }
 
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
+            public void mouseReleased(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     showMenu(e);
                 }
             }
 
-            private void showMenu(java.awt.event.MouseEvent e) {
+            private void showMenu(MouseEvent e) {
                 int index = contactList.locationToIndex(e.getPoint());
                 if (index < 0) {
                     return;

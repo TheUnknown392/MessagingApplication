@@ -3,30 +3,33 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/LandingUi.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/FrameUi.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ContactUi.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/MessageManager.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/Main.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/MessageDisplay.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/SenderInfo.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/SendMessage.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/Message.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/get_message.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/ConnectionKey.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestInformation.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/StatusUi.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ChatUi.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/DatabaseInfo.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/GetConnectionDB.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/UserInfo.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoPassword.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoMessage.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/database/Query.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/NewContactUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/Main.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/ConnectionKey.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/NewConnectionAccepted.java</file>
-            <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestContact.java</file>
             <file>file:/home/theunknown/Git/MessagingApplication/src/main/ConnectSenderGUI.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestContact.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/Query.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ContactUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/RequestInformation.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/Message.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/ChatUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/StatusUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/SendMessage.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/main/get_message.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/chatGUI/MessageDisplay.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/DatabaseInfo.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/LandingUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/GetConnectionDB.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoPassword.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoRSA.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/DatabaseUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/DatabaseManager.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/FrameUi.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/SenderInfo.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/frontend/MessageManager.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/database/UserInfo.java</file>
+            <file>file:/home/theunknown/Git/MessagingApplication/src/crypto/CryptoMessage.java</file>
         </group>
     </open-files>
 </project-private>
