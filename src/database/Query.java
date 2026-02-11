@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
+import frontend.DatabaseUi;
+import database.DatabaseManager;
 import main.Message;
 
 /**
@@ -28,12 +30,24 @@ public class Query {
 
     // TODO: update COUNT operation to boolean returning query
     public PreparedStatement stmt;
-    private Connection conn;
+    private Connection conn = null;
     public boolean debug;
 
     public Query(boolean debug) {
         //TODO: input databse information by userinput
-        this.conn = new GetConnectionDB("localhost", "3306", "messagedb", "user", "1234", debug).getConnection();
+        while(this.conn==null){
+            this.conn = new GetConnectionDB(DatabaseManager.loadOrAsk(),this.debug).getConnection();
+            
+            if(this.conn == null){
+                DatabaseInfo databaseInfo = DatabaseUi.showDialog();
+                this.conn = new GetConnectionDB(databaseInfo, debug).getConnection();
+                
+                if(this.conn != null){
+                    DatabaseManager.saveToFile(databaseInfo);
+                }
+            }
+        }
+        
         this.debug = debug;
     }
 
@@ -584,5 +598,4 @@ public class Query {
             }
         }
     }
-
 }

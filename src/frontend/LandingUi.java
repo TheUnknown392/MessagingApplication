@@ -16,8 +16,11 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import crypto.CryptoPassword;
+import database.DatabaseInfo;
 import database.UserInfo;
 import database.Query;
+import frontend.DatabaseUi;
+import database.DatabaseManager;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
@@ -33,10 +36,12 @@ public class LandingUi extends JDialog {
     private JPasswordField password;
     private JButton submitButton;
     private JButton databaseButton;
+    private JFrame parent;
 
     public LandingUi(JFrame parent) {
         super(parent, "Encrypted Messaging Application", true);
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.parent = parent;
         int x = 450;
         int y = 350;
         setSize(x, y);
@@ -76,7 +81,7 @@ public class LandingUi extends JDialog {
         add(new JPanel(), BorderLayout.NORTH);
         add(form, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
-        
+
         this.getRootPane().setDefaultButton(submitButton);
     }
 
@@ -96,6 +101,12 @@ public class LandingUi extends JDialog {
                     break;
                 case "Database":
                     // TODO: make database information inputted by user, somehow and save it for future use in some file;
+                    DatabaseInfo config = DatabaseUi.showDialog();
+                    if (config != null) {
+                        new DatabaseManager().saveToFile(config);
+                    }else{
+                        JOptionPane.showMessageDialog(rootPane, "Some Information are Incorrect", "Try Again!", JOptionPane.ERROR_MESSAGE);
+                    }
                     break;
                 default:
                     System.err.println("Unexpected onClick action case: " + message);
@@ -110,8 +121,8 @@ public class LandingUi extends JDialog {
         System.out.println(username);
         String password = new String(this.password.getPassword());
         System.out.println(password);
-        
-        if(!(cleanUsername(username) && cleanPassword(password))){
+
+        if (!(cleanUsername(username) && cleanPassword(password))) {
             JOptionPane.showConfirmDialog(this, "username cannot have ':', ' ' character(s), it cannot be empty and the length should be below 250 characters", "Dirty input.", JOptionPane.ERROR_MESSAGE);
             return false;
         }
@@ -121,13 +132,13 @@ public class LandingUi extends JDialog {
 
         if (user == null) {
             int choice = JOptionPane.showConfirmDialog(this, "Do you want to create new user ? Don't forget the password.", "Unknown User", JOptionPane.WARNING_MESSAGE);
-            
+
             if (choice != JOptionPane.YES_OPTION) {
                 this.username.setText("");
                 this.password.setText("");
                 return false;
             }
-            
+
             user = query.createUser(username, password);
 
             if ((user = query.saveNewUser(user)) == null) {
@@ -148,15 +159,15 @@ public class LandingUi extends JDialog {
         setVisible(true);
         return result;
     }
-    
-    private boolean cleanUsername(String username){
-        return (!username.contains(":") || !username.contains(" ") || !username.equals("") || username.length()<=250);
+
+    private boolean cleanUsername(String username) {
+        return (!username.contains(":") || !username.contains(" ") || !username.equals("") || username.length() <= 250);
     }
-    
-    private boolean cleanPassword(String password){
+
+    private boolean cleanPassword(String password) {
         return !password.equals("");
     }
-    
+
 }
 // TODO: message notification
 // TODO: get conversation list of selected user only and not other users

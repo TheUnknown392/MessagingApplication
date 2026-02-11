@@ -9,52 +9,39 @@ package database;
  * @author theunknown
  */
 public class DatabaseInfo {
-    // "localhost", "3306", "messagedb", "user", "1234"
-    private String host;
-    private String port;
-    private String database;
-    private String user;
-    private String password;
-    
-    public DatabaseInfo(String host, String port, String dbName, String user, String password) {
+
+    private final String host;
+    private final int port;
+    private final String database;
+    private final String username;
+    private final String password;
+
+    public DatabaseInfo(String host, int port, String database,
+            String username, String password) {
         this.host = host;
         this.port = port;
-        this.database = dbName;
-        this.user = user;
-        this.password = password;
-    }
-    
-    public void setHost(String host){
-        this.host = host;
-    }
-    public void setPort(String Port){
-        this.port= Port;
-    }
-    public void setDatabase(String database){
         this.database = database;
-    }
-    public void setUser(String User){
-        this.user = User;
-    }
-    public void setPassword(String password){
+        this.username = username;
         this.password = password;
     }
-    
-    public String getHost(){
-        return this.host;
+
+    public String getHost() {
+        return host;
     }
-    public String getPort(){
-        return this.port;
+
+    public int getPort() {
+        return port;
     }
-    public String getDatabase(){
-        return this.database;
+
+    public String getDatabase() {
+        return database;
     }
-    public String getUser(){
-        return this.user;
+
+    public String getUsername() {
+        return username;
     }
-    public String getPassword(){
-        return this.password;
+
+    public String getPassword() {
+        return password;
     }
-    
-    
 }

@@ -39,9 +39,9 @@ public class GetConnectionDB {
     
     public GetConnectionDB(DatabaseInfo database, boolean debug) {
         this.dbhost = database.getHost();
-        this.dbport = database.getPort();
+        this.dbport = Integer.toString(database.getPort());
         this.dbName = database.getDatabase();
-        this.dbuser = database.getUser();
+        this.dbuser = database.getUsername();
         this.dbpassword = database.getPassword();
         
         this.debug = debug;
@@ -63,7 +63,7 @@ public class GetConnectionDB {
                 isMariadb = false;
             }catch(SQLException ex){
                 System.out.println("cannot get connection to server:"+e.getMessage());
-                System.exit(101);
+                return null;
             }
         }
  
@@ -89,8 +89,8 @@ public class GetConnectionDB {
         // Create all tables
         createUsersTable();
         createSendersTable();
-        createCypherMessagesTable();
         createCommunicationParticipantsTable();
+        createCypherMessagesTable();
         if(this.debug){
             System.out.println("All tables created or already exist.");
         }
@@ -156,8 +156,8 @@ public class GetConnectionDB {
         String sql = "CREATE TABLE IF NOT EXISTS cypher_messages ("
                 + "mid BIGINT PRIMARY KEY AUTO_INCREMENT,"
                 + "sender BOOLEAN NOT NULL,"
-                + "uid BIGINT NOT NULL,"
-                + "sid BIGINT NOT NULL,"
+                + "uid BIGINT(20) NOT NULL,"
+                + "sid BIGINT(20) NOT NULL,"
                 + "ciphertext BLOB NOT NULL,"
                 + "iv VARBINARY(20) NOT NULL,"
                 + "read_state BOOLEAN DEFAULT FALSE,"
