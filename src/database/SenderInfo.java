@@ -8,19 +8,22 @@ import java.sql.Timestamp;
  * @author theunknown
  */
 public class SenderInfo {
-    public SenderInfo(String username, String publicKey){
-        CryptoRSA crypt = new CryptoRSA();
-        this.username = username;
-        this.PublicKey = crypt.getPublicKeyFromString(publicKey).getEncoded();
-    }
     private int id;
-
+    public String nickname;
     public String username;
     private Timestamp encounter_date;
 
     private byte[] PublicKey;
     private String md5;
     private byte[] aes_key;
+    
+    
+    public SenderInfo(String username, String publicKey){
+        CryptoRSA crypt = new CryptoRSA();
+        this.username = username;
+        this.nickname = this.username;
+        this.PublicKey = crypt.getPublicKeyFromString(publicKey).getEncoded();
+    }
     
     public int getId() {
         return this.id;
@@ -72,6 +75,6 @@ public class SenderInfo {
     
     @Override
     public String toString(){
-        return this.username;
+        return this.nickname;
     }
 }

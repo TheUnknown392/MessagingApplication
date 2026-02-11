@@ -35,19 +35,19 @@ public class Query {
 
     public Query(boolean debug) {
         //TODO: input databse information by userinput
-        while(this.conn==null){
-            this.conn = new GetConnectionDB(DatabaseManager.loadOrAsk(),this.debug).getConnection();
-            
-            if(this.conn == null){
+        while (this.conn == null) {
+            this.conn = new GetConnectionDB(DatabaseManager.loadOrAsk(), this.debug).getConnection();
+
+            if (this.conn == null) {
                 DatabaseInfo databaseInfo = DatabaseUi.showDialog();
                 this.conn = new GetConnectionDB(databaseInfo, debug).getConnection();
-                
-                if(this.conn != null){
+
+                if (this.conn != null) {
                     DatabaseManager.saveToFile(databaseInfo);
                 }
             }
         }
-        
+
         this.debug = debug;
     }
 
@@ -237,6 +237,31 @@ public class Query {
                 sender.setId(rs.getInt("sid"));
             } else {
                 System.err.println("unable to get sid of user " + sender.username); // TODO: remove the invalid user from database
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return false;
+    }
+
+    public boolean changeUsername(UserInfo userInfo, SenderInfo senderInfo, String username) {
+        try {
+            stmt = conn.prepareStatement("UPDATE communication_participants SET username = ? where uid = ? and sid = ?");
+            stmt.setString(1, username);
+            stmt.setInt(2, userInfo.id);
+            stmt.setInt(3, senderInfo.getId());
+
+            int result = stmt.executeUpdate();
+            if (result==0) {
+                System.err.println("unable to change sender username (changeUsername)"); 
+                return false;
             }
         } catch (SQLException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
@@ -491,13 +516,14 @@ public class Query {
         List<SenderInfo> contacts = null;
         try {
             contacts = new ArrayList<>();
-            stmt = conn.prepareStatement("SELECT sid FROM communication_participants where uid = ?;");
-//            System.out.println("from getContacts");
+            stmt = conn.prepareStatement("SELECT sid,username FROM communication_participants where uid = ?;");
             stmt.setInt(1, user.id);
             ResultSet rs = stmt.executeQuery();
             Query temp = new Query(false);
             while (rs.next()) {
-                contacts.add(temp.getSender(rs.getInt("sid")));
+                SenderInfo sender = temp.getSender(rs.getInt("sid"));
+                sender.nickname = rs.getString("username");
+                contacts.add(sender);
             }
             temp.closeConnection();
             return contacts;
@@ -574,9 +600,8 @@ public class Query {
             byte[] iv = new byte[ivLength];
             byte[] ciphertext = new byte[combined.length - ivLength];
 
-
-            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);    
-            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);       
+            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);
+            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);
 
             stmt = conn.prepareStatement(
                     "INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state, sender) "
