@@ -90,7 +90,7 @@ public class ChatUi {
         contactUi.contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 if (true) {
-                    if(contactUi.getSelectedSender().username != null){
+                    if(contactUi.getSelectedSender()!= null){
                         System.out.println("selected: " + contactUi.getSelectedSender().username);
                     }
                 }
@@ -152,7 +152,8 @@ public class ChatUi {
                 break;
                 case "Add_Contacts": {
                     System.out.println("TODO: Adding new contacts through GUI. Incomplete");
-                    new NewContactUi(user);
+                    new NewContactUi(user,contactUi);
+                    contactUi.loadContacts();
                 }
                 break;
                 default: {
