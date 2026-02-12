@@ -312,7 +312,38 @@ public class Query {
         }
         return sender;
     }
+        /**
+     * gets sender from the fingerprint
+     *
+     * @param md5
+     * @return
+     */
+    public String getSenderNickname(SenderInfo sender, UserInfo user) {
+        try {
+            stmt = conn.prepareStatement("SELECT username from communication_participants where uid = ? and sid = ?");
+            stmt.setInt(1, user.id);
+            stmt.setInt(2,sender.getId());
 
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("username");
+            } else {
+                System.err.println("unable to get nickname"); 
+                return null;
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                stmt.close();
+                stmt = null;
+            } catch (SQLException ex) {
+                Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return null;
+    }
+    
     public byte[] relatedSenderAES(int uid, int sid) {
         SenderInfo sender = null;
         try {
@@ -656,7 +687,7 @@ public class Query {
         PreparedStatement stmt = null;
         Map<String, List<Message>> conversationMap = new HashMap<>();
         try {
-            stmt = conn.prepareStatement("select  cypher_messages.*, senders.sid, senders.fingerprint, communication_participants.aes_user, communication_participants.aes_sender, communication_participants.username from \n"
+            stmt = conn.prepareStatement("select  cypher_messages.*, senders.sid, senders.fingerprint,communication_participants.username as nickname, communication_participants.aes_user, communication_participants.aes_sender, communication_participants.username from \n"
                     + "	cypher_messages join communication_participants on cypher_messages.uid = communication_participants.uid and cypher_messages.sid = communication_participants.sid join\n"
                     + "	senders on communication_participants.sid = senders.sid where\n"
                     + "	cypher_messages.uid = ? order by\n"
@@ -668,6 +699,7 @@ public class Query {
             while (rs.next()) {
                 int senderId = rs.getInt("senders.sid");
                 String fingerprint = rs.getString("senders.fingerprint");
+                String nickname = rs.getString("nickname");
                 byte[] encrypted = rs.getBytes("cypher_messages.ciphertext");
                 byte[] ivBytes = rs.getBytes("cypher_messages.iv");
                 Boolean sentByUser = rs.getBoolean("cypher_messages.sender");
@@ -686,6 +718,7 @@ public class Query {
                 }
 
                 SenderInfo senderInfo = querySender.getSender(fingerprint);
+                senderInfo.nickname = nickname;
                 Message msg = new Message(senderInfo, decrypted, sentByUser);
                 conversationMap.computeIfAbsent(fingerprint, (k) -> new ArrayList<>()).add(msg);
             }

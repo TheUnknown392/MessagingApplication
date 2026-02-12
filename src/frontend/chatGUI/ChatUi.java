@@ -133,6 +133,7 @@ public class ChatUi {
 
         contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         contactUi.historyLoader.loadHistory();
+        contactUi.loadContacts();
         
         Timer timer = new Timer(2000, e -> {
             statusUi.updateStatus(isActive(selectedSender));
