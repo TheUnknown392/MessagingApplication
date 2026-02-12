@@ -287,7 +287,7 @@ public class Main {
             DatagramSocket dSocket = null;
 
             try {
-                dSocket = new DatagramSocket();
+                dSocket = new DatagramSocket(this.udp_port+1,InetAddress.getByName(getLocalIp()));
                 dSocket.setBroadcast(true);
             } catch (Exception e) {
                 System.out.println("Error creating UDP socket: " + e.getMessage());
