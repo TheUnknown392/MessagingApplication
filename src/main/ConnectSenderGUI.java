@@ -74,14 +74,14 @@ public class ConnectSenderGUI extends JFrame {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
 
-        refreshButton = new JButton("🔄 Refresh");
+        refreshButton = new JButton("Refresh");
         refreshButton.addActionListener(e -> loadAvailableConnections());
 
-        connectButton = new JButton("✅ Connect");
+        connectButton = new JButton("Connect");
         connectButton.setEnabled(false);
         connectButton.addActionListener(e -> handleConnect());
 
-        JButton closeButton = new JButton("❌ Close");
+        JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
 
         availableList.addListSelectionListener(e -> {
@@ -138,7 +138,6 @@ public class ConnectSenderGUI extends JFrame {
                                     + (CONNECT_COOLDOWN_MS / 1000) + " seconds");
                             statusLabel.setText("No recent connections found");
                         } else {
-                            // EXACT same display format as CLI: "0: key"
                             for (int i = 0; i < availableKeys.size(); i++) {
                                 availableListModel.addElement(i + ": " + availableKeys.get(i));
                             }
@@ -192,13 +191,13 @@ public class ConnectSenderGUI extends JFrame {
                     boolean success = get();
 
                     if (success) {
-                        statusLabel.setText("✅ Connected to: " + chosenKey);
+                        statusLabel.setText("Connected to: " + chosenKey);
                         JOptionPane.showMessageDialog(ConnectSenderGUI.this,
                                 "Connection established successfully!",
                                 "Success", JOptionPane.INFORMATION_MESSAGE);
                         loadAvailableConnections(); // Refresh list
                     } else {
-                        statusLabel.setText("❌ Connection failed");
+                        statusLabel.setText("Connection failed");
                         JOptionPane.showMessageDialog(ConnectSenderGUI.this,
                                 "Failed to establish connection",
                                 "Connection Failed", JOptionPane.ERROR_MESSAGE);
@@ -206,7 +205,7 @@ public class ConnectSenderGUI extends JFrame {
                     }
 
                 } catch (Exception ex) {
-                    statusLabel.setText("❌ Error occurred");
+                    statusLabel.setText("Error occurred");
                     JOptionPane.showMessageDialog(ConnectSenderGUI.this,
                             ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                     loadAvailableConnections();

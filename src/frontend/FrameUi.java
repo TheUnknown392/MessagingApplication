@@ -36,7 +36,7 @@ public class FrameUi {
         
         statusUi = new StatusUi();
         chatUi = new ChatUi(user, statusUi);
-        
+         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);
         frame.getRootPane().setDefaultButton(chatUi.sendMessage);

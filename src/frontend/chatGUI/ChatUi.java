@@ -36,6 +36,7 @@ import javax.swing.JFrame;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import frontend.StatusUi;
+import frontend.MessageHistoryLoader;
 import javax.swing.UIManager;
 import main.Main;
 
@@ -68,7 +69,8 @@ public class ChatUi {
     public SenderInfo selectedSender = null;
 
     private OnClick onClickListener = null;
-
+    
+    private MessageHistoryLoader historyLoader;
     private void setProperties(UserInfo user) {
         this.user = user;
         this.contactUi = new ContactUi(this.query, this.user, this);
@@ -130,7 +132,7 @@ public class ChatUi {
         splitPane.setRightComponent(messagePanel);
 
         contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        contactUi.loadContacts();
+        contactUi.historyLoader.loadHistory();
         
         Timer timer = new Timer(2000, e -> {
             statusUi.updateStatus(isActive(selectedSender));

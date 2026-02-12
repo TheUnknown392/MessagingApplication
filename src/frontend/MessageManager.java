@@ -46,7 +46,7 @@ public class MessageManager implements Runnable {
                 } else {
                     byte[] aesKeyBytes = query.relatedUserAES(user.getId(), message.getSenderInfo().getId());
                     System.out.println("aesKeyBytes(MessageManager): " + aesKeyBytes);
-                    String decrypted= CryptoMessage.decryptMessage(message.getEncryptedMessage(), aesKeyBytes);
+                    String decrypted= CryptoMessage.decryptMessage(message.getMessage(), aesKeyBytes);
                     SwingUtilities.invokeLater(() -> {
                         System.out.println("The selected sender in MessageManager: " + message.getSenderInfo().getFingerprint());
                         if(!frame.chatUi.selectedSender.getFingerprint().equals(message.getSenderInfo().getFingerprint())){
@@ -56,7 +56,7 @@ public class MessageManager implements Runnable {
                         frame.chatUi.messageDisplay.updateIfSelected(message.getSenderInfo().getFingerprint());
 //                        statusUi.chatUi.messageDisplay.showHistory(message.getSenderInfo().getFingerprint());
                     });
-                    // System.out.println(message.getSenderInfo().username + ": " + message.getEncryptedMessage().replace("//n","\n"));}}
+                    // System.out.println(message.getSenderInfo().username + ": " + message.getMessage().replace("//n","\n"));}}
                 }
             }
         

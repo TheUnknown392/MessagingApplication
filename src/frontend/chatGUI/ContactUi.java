@@ -13,6 +13,7 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import frontend.MessageHistoryLoader;
 import java.util.logging.Logger;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -31,14 +32,17 @@ import javax.swing.SwingUtilities;
 public class ContactUi {
 
     protected JScrollPane contactScroll = null;
-    protected DefaultListModel<SenderInfo> contactListModel = null;
+    public DefaultListModel<SenderInfo> contactListModel = null;
     protected JList<SenderInfo> contactList = null;
     protected JPopupMenu popupMenu = new JPopupMenu();
+    private boolean historyLoaded = false;
 
     private Query query = null;
     private UserInfo user = null;
     private SenderInfo sender = null;
     private ChatUi chatUi = null;
+    MessageHistoryLoader historyLoader = null;
+    
 
     private ArrayList<String> unRead = new ArrayList<>();
 
@@ -46,6 +50,7 @@ public class ContactUi {
 
     public ContactUi(Query query, UserInfo user, ChatUi chatUi) {
         this.chatUi = chatUi;
+        this.historyLoader = new MessageHistoryLoader(chatUi, user);
         contactListModel = new DefaultListModel<>();
         contactList = new JList(contactListModel);
         contactScroll = new JScrollPane(contactList);

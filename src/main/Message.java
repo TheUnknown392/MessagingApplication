@@ -11,18 +11,27 @@ import database.SenderInfo;
  */
 public class Message {
     private SenderInfo sender;
-    private String encryptedMessage;
+    private String Message;
+    private Boolean sentByUser;
     
     public Message(SenderInfo sender, String encrypted_message){
         this.sender = sender;
-        this.encryptedMessage = encrypted_message;
+        this.Message = encrypted_message;
+    }
+    public Message(SenderInfo sender, String encrypted_message, Boolean sentByUser){
+        this.sender = sender;
+        this.Message = encrypted_message;
+        this.sentByUser = sentByUser;
     }
     
     public SenderInfo getSenderInfo(){
         return sender;
     }
     
-    public String getEncryptedMessage(){
-        return encryptedMessage;
+    public String getMessage(){
+        return Message;
+    }
+    public Boolean sentByUser(){
+        return sentByUser;
     }
 }

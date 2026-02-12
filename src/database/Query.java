@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Scanner;
 import frontend.DatabaseUi;
 import database.DatabaseManager;
+import java.util.HashMap;
+import java.util.Map;
 import main.Message;
 
 /**
@@ -543,10 +545,9 @@ public class Query {
     public boolean saveIncomingEncryptedMessage(Message messageInfo, UserInfo user) {
         PreparedStatement stmt = null;
         try {
-            byte[] combined = Base64.getDecoder().decode(messageInfo.getEncryptedMessage());
-            int ivLength = 12;
+            byte[] combined = Base64.getDecoder().decode(messageInfo.getMessage());
+            int ivLength = 16;
 
-            // Validate input length
             if (combined.length < ivLength) {
                 System.err.println("Invalid encrypted message length");
                 return true;
@@ -555,8 +556,8 @@ public class Query {
             byte[] iv = new byte[ivLength];
             byte[] ciphertext = new byte[combined.length - ivLength];
 
-            System.arraycopy(combined, 0, iv, 0, ivLength);
-            System.arraycopy(combined, ivLength, ciphertext, 0, ciphertext.length);
+            System.arraycopy(combined, 0, ciphertext, 0, ciphertext.length);
+            System.arraycopy(combined, ciphertext.length, iv, 0, ivLength);
 
             stmt = conn.prepareStatement(
                     "INSERT INTO cypher_messages(uid, sid, ciphertext, iv, read_state, sender) "
@@ -591,7 +592,7 @@ public class Query {
         PreparedStatement stmt = null;
         try {
             byte[] combined = Base64.getDecoder().decode(encryptedMessage);
-            int ivLength = 12;
+            int ivLength = 16;
 
             if (combined.length < ivLength) {
                 return true;
@@ -640,6 +641,64 @@ public class Query {
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(Query.class.getName()).log(Level.WARNING, "Invalid Request", ex);
             return true;
+        } finally {
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException ex) {
+                    Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }
+
+    public Map<String, List<Message>> getUserMessages(UserInfo user) {
+        PreparedStatement stmt = null;
+        Map<String, List<Message>> conversationMap = new HashMap<>();
+        try {
+            stmt = conn.prepareStatement("select  cypher_messages.*, senders.sid, senders.fingerprint, communication_participants.aes_user, communication_participants.aes_sender, communication_participants.username from \n"
+                    + "	cypher_messages join communication_participants on cypher_messages.uid = communication_participants.uid and cypher_messages.sid = communication_participants.sid join\n"
+                    + "	senders on communication_participants.sid = senders.sid where\n"
+                    + "	cypher_messages.uid = ? order by\n"
+                    + "	cypher_messages.sent_at ASC;");
+            stmt.setInt(1, user.id);
+            ResultSet rs = stmt.executeQuery();
+            Query queryAES = new Query(false);
+            Query querySender = new Query(false);
+            while (rs.next()) {
+                int senderId = rs.getInt("senders.sid");
+                String fingerprint = rs.getString("senders.fingerprint");
+                byte[] encrypted = rs.getBytes("cypher_messages.ciphertext");
+                byte[] ivBytes = rs.getBytes("cypher_messages.iv");
+                Boolean sentByUser = rs.getBoolean("cypher_messages.sender");
+
+                byte[] aesUser = queryAES.relatedUserAES(user.getId(), senderId);
+                byte[] aesSender = queryAES.relatedSenderAES(user.getId(), senderId);
+                String decrypted;
+                try {
+                    if (sentByUser) {
+                        decrypted = CryptoMessage.decryptMessage(ivBytes,encrypted, aesSender).replace("//n", "\n");
+                    } else {
+                        decrypted = CryptoMessage.decryptMessage(ivBytes,encrypted, aesUser).replace("//n", "\n");
+                    }
+                } catch (Exception e) {
+                    decrypted = "[unreadable message]";
+                }
+
+                SenderInfo senderInfo = querySender.getSender(fingerprint);
+                Message msg = new Message(senderInfo, decrypted, sentByUser);
+                conversationMap.computeIfAbsent(fingerprint, (k) -> new ArrayList<>()).add(msg);
+            }
+            queryAES.closeConnection();
+            querySender.closeConnection();
+            return conversationMap;
+
+        } catch (SQLException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Query.class.getName()).log(Level.WARNING, "Invalid Request", ex);
+            return null;
         } finally {
             if (stmt != null) {
                 try {
