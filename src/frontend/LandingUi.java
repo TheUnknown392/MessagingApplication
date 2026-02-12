@@ -36,12 +36,10 @@ public class LandingUi extends JDialog {
     private JPasswordField password;
     private JButton submitButton;
     private JButton databaseButton;
-    private JFrame parent;
 
     public LandingUi(JFrame parent) {
         super(parent, "Encrypted Messaging Application", true);
         this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        this.parent = parent;
         int x = 450;
         int y = 350;
         setSize(x, y);
@@ -170,4 +168,3 @@ public class LandingUi extends JDialog {
 
 }
 // TODO: message notification
-// TODO: get conversation list of selected user only and not other users

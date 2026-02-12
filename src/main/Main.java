@@ -22,7 +22,8 @@ import java.util.logging.Logger;
 public class Main {
 
     Boolean debug = false;
-
+    
+    //TODO: make some enums
     public static final String PREFIX_CONNECT = "CONNECT:";
     public static final String PREFIX_REQUEST_INFORMATION = "REQUEST:";
     public static final String PREFIX_REPLY_INFORMATION = "REPLY:";

@@ -21,8 +21,12 @@ import database.Query;
 import database.SenderInfo;
 import database.UserInfo;
 import frontend.SendMessage;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.Timer;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +35,9 @@ import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import frontend.StatusUi;
+import javax.swing.UIManager;
+import main.Main;
 
 /**
  *
@@ -38,7 +45,7 @@ import javax.swing.SwingUtilities;
  */
 public class ChatUi {
 
-    JFrame frame;
+    StatusUi statusUi;
     public UserInfo user;
     private Query query = new Query(false);
 
@@ -53,35 +60,32 @@ public class ChatUi {
     public JPanel inputPanel = null;
 
     public JButton sendMessage = null;
-    
+
     public JButton addContacts = null;
 
     public JSplitPane splitPane = null;
 
-    private SenderInfo selectedSender = null;
-    
+    public SenderInfo selectedSender = null;
+
     private OnClick onClickListener = null;
-    
-    private void setProperties(UserInfo user, JFrame parentFrame){
-        this.frame = parentFrame;
+
+    private void setProperties(UserInfo user) {
         this.user = user;
-        this.contactUi       = new ContactUi(this.query, this.user, this);
-        this.sendMessage     = new JButton("Send");
-        this.addContacts     = new JButton("Add Contacts");
-        this.messageDisplay  = new MessageDisplay();
-        this.messageField    = new JTextField();
-        this.inputPanel      = new JPanel(new BorderLayout());
-        this.messageScroll   = new JScrollPane(messageDisplay.showMessage);
+        this.contactUi = new ContactUi(this.query, this.user, this);
+        this.sendMessage = new JButton("Send");
+        this.addContacts = new JButton("Add Contacts");
+        this.messageDisplay = new MessageDisplay();
+        this.messageField = new JTextField();
+        this.inputPanel = new JPanel(new BorderLayout());
+        this.messageScroll = new JScrollPane(messageDisplay.showMessage);
         this.onClickListener = new OnClick();
-        this.splitPane       = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        this.splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
     }
 
-    public ChatUi(UserInfo user, JFrame parentFrame) {
+    public ChatUi(UserInfo user, StatusUi statusUi) {
         assert user != null;
-        
-        
-        setProperties(user, parentFrame);
-        
+        this.statusUi = statusUi;
+        setProperties(user);
         // listeners
         sendMessage.setActionCommand("Send_Message");
         addContacts.setActionCommand("Add_Contacts");
@@ -89,15 +93,20 @@ public class ChatUi {
         addContacts.addActionListener(onClickListener);
         contactUi.contactList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                if (true) {
-                    if(contactUi.getSelectedSender()!= null){
-                        System.out.println("selected: " + contactUi.getSelectedSender().username);
-                    }
+                if (contactUi.getSelectedSender() != null) {
+                    
+                    System.out.println("selected: " + contactUi.getSelectedSender().username);
+                    messageField.setForeground(UIManager.getColor("TextField.foreground"));
+                    messageField.setText("");
+                    
+                    this.selectedSender = contactUi.getSelectedSender();
+                    
+                    contactUi.messageRead(selectedSender);
+                    SwingUtilities.invokeLater(() -> {
+                        messageDisplay.showHistory(selectedSender.getFingerprint());
+                    });
+                    this.statusUi.updateStatus(isActive(selectedSender));
                 }
-                this.selectedSender = contactUi.getSelectedSender();
-                SwingUtilities.invokeLater(() -> {
-                    messageDisplay.showHistory(selectedSender.getFingerprint());
-                });
             }
         });
 
@@ -109,7 +118,7 @@ public class ChatUi {
         JLabel contactTitle = new JLabel("Contacts");
         contactPanel.add(contactUi.contactScroll, BorderLayout.CENTER);
         contactPanel.add(contactTitle, BorderLayout.NORTH);
-        contactPanel.add(addContacts,BorderLayout.SOUTH);
+        contactPanel.add(addContacts, BorderLayout.SOUTH);
         // messagePane
         JPanel messagePanel = new JPanel(new BorderLayout());
         messagePanel.add(new JLabel("Message"), BorderLayout.NORTH);
@@ -119,13 +128,16 @@ public class ChatUi {
         splitPane.setDividerLocation(150);
         splitPane.setLeftComponent(contactPanel);
         splitPane.setRightComponent(messagePanel);
-       
-        contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        
 
+        contactUi.contactList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         contactUi.loadContacts();
+        
+        Timer timer = new Timer(2000, e -> {
+            statusUi.updateStatus(isActive(selectedSender));
+        });
+        timer.start();
     }
- 
+
     private class OnClick implements ActionListener {
 
         @Override
@@ -145,15 +157,20 @@ public class ChatUi {
 
                     sendmessage.sendMessage(user.id, selectedSender, unsafeMessage);
                     System.out.println("The selected sender in actionPerformed: " + selectedSender.getFingerprint());
-                    messageDisplay.appendMessage(selectedSender.getFingerprint(),"You: " + unsafeMessage);
-                    messageDisplay.showHistory(selectedSender.getFingerprint());
-                    messageField.setText("");
-                    contactUi.messageRead(selectedSender);
+                    if (!isActive(selectedSender)) {
+                        messageField.setForeground(Color.red);
+                        messageField.setText("The User Offline!");
+                    } else {
+                        messageDisplay.appendMessage(selectedSender.getFingerprint(), "You: " + unsafeMessage);
+                        messageDisplay.showHistory(selectedSender.getFingerprint());
+                        messageField.setText("");
+
+                    }
                 }
                 break;
                 case "Add_Contacts": {
                     System.out.println("TODO: Adding new contacts through GUI. Incomplete");
-                    new NewContactUi(user,contactUi);
+                    new NewContactUi(user, contactUi);
                     contactUi.loadContacts();
                 }
                 break;
@@ -162,5 +179,12 @@ public class ChatUi {
                 }
             }
         }
+    }
+
+    public Boolean isActive(SenderInfo sender) {
+        if (sender == null) {
+            return false;
+        }
+        return Main.clients.containsKey(sender.getFingerprint());
     }
 }

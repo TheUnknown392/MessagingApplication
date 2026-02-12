@@ -34,8 +34,8 @@ public class FrameUi {
         frame.setLayout(new BorderLayout());
         frame.setSize(x, y);
         
-        chatUi = new ChatUi(user, frame);
         statusUi = new StatusUi();
+        chatUi = new ChatUi(user, statusUi);
         
         
         frame.add(chatUi.splitPane, BorderLayout.CENTER);
